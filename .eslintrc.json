@@ -4,5 +4,10 @@
     "plugin:prettier/recommended",
     "plugin:node/recommended",
     "plugin:security/recommended-legacy"
-  ]
+  ],
+  "rules": {
+    "node/no-unsupported-features/es-syntax": "off",
+    // no-missing-import gets confused by typescript `paths`
+    "node/no-missing-import": "off"
+  }
 }
