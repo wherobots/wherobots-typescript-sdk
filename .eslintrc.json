@@ -8,6 +8,12 @@
   "rules": {
     "node/no-unsupported-features/es-syntax": "off",
     // no-missing-import gets confused by typescript `paths`
-    "node/no-missing-import": "off"
+    "node/no-missing-import": "off",
+    "@typescript-eslint/no-unused-vars": [
+      "error",
+      {
+        "ignoreRestSiblings": true
+      }
+    ]
   }
 }
