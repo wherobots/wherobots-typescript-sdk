@@ -10,10 +10,12 @@
 
 import { Connection, Runtime } from "@/index";
 
-const conn = new Connection({
-  apiKey:
-    process.env["WHEROBOTS_API_KEY"] || "00000000-0000-0000-0000-000000000000",
-  runtime: Runtime.SEDONA,
-});
-
-setTimeout(() => conn.close(), 5000);
+(async () => {
+  const conn = await Connection.connect({
+    apiKey:
+      process.env["WHEROBOTS_API_KEY"] ||
+      "00000000-0000-0000-0000-000000000000",
+    runtime: Runtime.SEDONA,
+  });
+  setTimeout(() => conn.close(), 5000);
+})();

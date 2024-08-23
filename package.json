@@ -14,7 +14,8 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --check .",
     "format:fix": "prettier --write .",
-    "prepare": "husky"
+    "prepare": "husky",
+    "test": "vitest"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.4.0",
@@ -34,7 +35,9 @@
     "husky": "^9.1.4",
     "lint-staged": "^15.2.9",
     "prettier": "^3.3.3",
-    "typescript": "^5.5.4"
+    "typescript": "^5.5.4",
+    "vitest": "^2.0.5",
+    "vitest-fetch-mock": "^0.3.0"
   },
   "dependencies": {
     "fetch-retry": "^6.0.0",
