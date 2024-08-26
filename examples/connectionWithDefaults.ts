@@ -1,14 +1,14 @@
 /*
  * run with:
 
- *   `WHEROBOTS_API_KEY=<api key> node -r @swc-node/register examples/connectionWithDefaults.ts`
+ *   `WHEROBOTS_API_KEY=<api key> npm exec tsx examples/connectionWithDefaults.ts`
  * 
  * or for verbose logging:
  * 
- *   `NODE_DEBUG="wherobots" WHEROBOTS_API_KEY=<api key> node -r @swc-node/register examples/connectionWithDefaults.ts`
+ *   `NODE_DEBUG="wherobots" WHEROBOTS_API_KEY=<api key> npm exec tsx examples/connectionWithDefaults.ts`
  */
 
-import { Connection, Runtime } from "@/index";
+import { Connection, Runtime } from "@/index.js";
 
 (async () => {
   const conn = await Connection.connect({

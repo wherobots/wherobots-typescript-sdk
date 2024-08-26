@@ -1,7 +1,7 @@
 import z, { ZodRawShape } from "zod";
-import { SessionReponse } from "./schemas";
-import { SessionStatus } from "./constants";
-import logger from "./logger";
+import { SessionReponse } from "@/schemas.js";
+import { SessionStatus } from "@/constants.js";
+import logger from "@/logger.js";
 
 export const parseResponse = async <T extends z.ZodObject<ZodRawShape>>(
   res: Response,

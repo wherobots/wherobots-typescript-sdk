@@ -1,5 +1,5 @@
-import pino from "pino";
-import { SessionReponse } from "./schemas";
+import { pino } from "pino";
+import { SessionReponse } from "@/schemas.js";
 
 const shouldUseDebugLogging = (process.env["NODE_DEBUG"] || "")
   .split(",")

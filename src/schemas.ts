@@ -6,7 +6,7 @@ import {
   ResultsFormat,
   Runtime,
   SessionStatus,
-} from "./constants";
+} from "@/constants.js";
 
 // A schema for the options that are passed to the Connection contstructor,
 // used to generate the typescript type for that constructor

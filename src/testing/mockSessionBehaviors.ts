@@ -1,6 +1,4 @@
-import { SessionStatus } from "@/constants";
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
+import { SessionStatus } from "@/constants.js";
 import { FetchMock } from "vitest-fetch-mock";
 
 const createMockSessionPayload = (status: SessionStatus): string =>

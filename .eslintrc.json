@@ -5,6 +5,7 @@
     "plugin:node/recommended",
     "plugin:security/recommended-legacy"
   ],
+  "plugins": ["no-relative-import-paths"],
   "rules": {
     "node/no-unsupported-features/es-syntax": "off",
     // no-missing-import gets confused by typescript `paths`
@@ -15,8 +16,15 @@
         "ignoreRestSiblings": true
       }
     ],
-    "node/no-unpublished-import": ["error", {
-      "allowModules": ["vitest", "vitest-fetch-mock"]
-    }]
+    "node/no-unpublished-import": [
+      "error",
+      {
+        "allowModules": ["vitest", "vitest-fetch-mock"]
+      }
+    ],
+    "no-relative-import-paths/no-relative-import-paths": [
+      "error",
+      { "rootDir": "src", "prefix": "@" }
+    ]
   }
 }

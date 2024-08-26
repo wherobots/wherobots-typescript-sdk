@@ -1,16 +1,16 @@
 import fetchBuilder from "fetch-retry";
-import logger, { sessionContextLogger } from "./logger";
+import logger, { sessionContextLogger } from "@/logger.js";
 import {
   ConnectionOptions,
   ConnectionOptionsNormalized,
   ConnectionOptionsSchemaNormalized,
   SessionResponseSchema,
-} from "./schemas";
+} from "@/schemas.js";
 import {
   backoffRetry,
   isSessionInFinalState,
   parseResponse,
-} from "./api-utils";
+} from "@/api-utils.js";
 
 // will be used to mock out the fetch (and later WebSocket) API
 // in a unit testing environment

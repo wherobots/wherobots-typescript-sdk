@@ -1,9 +1,7 @@
 import { expect, test, describe, vi, beforeEach } from "vitest";
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
 import fetchMockBuilder from "vitest-fetch-mock";
-import { Connection } from "./connection";
-import { Runtime } from "./constants";
+import { Connection } from "@/connection.js";
+import { Runtime } from "@/constants.js";
 import {
   SESSION_LIFECYCLE_RESPONSES,
   simulateImmediatelyReadySession,
@@ -12,7 +10,7 @@ import {
   simulateSessionCreationLifecycle,
   simulateSessionPollInvalidResponse,
   simulateSessionServiceError,
-} from "./testing/mockSessionBehaviors";
+} from "@/testing/mockSessionBehaviors.js";
 
 const fetchMock = fetchMockBuilder(vi);
 const testHarness = { fetch: fetchMock as unknown as typeof fetch };
