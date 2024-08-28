@@ -13,9 +13,20 @@ import {
   simulateSessionPollInvalidResponse,
   simulateSessionServiceError,
 } from "./testing/mockSessionBehaviors";
+import {
+  createMockWebSocket,
+  resetMockWebSocket,
+  simulateImmediatelyOpenSocket,
+} from "./testing/mockSocketBehaviors";
 
 const fetchMock = fetchMockBuilder(vi);
-const testHarness = { fetch: fetchMock as unknown as typeof fetch };
+const MockWebSocket = createMockWebSocket();
+
+const testHarness = {
+  fetch: fetchMock as unknown as typeof fetch,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  WebSocket: MockWebSocket as any,
+};
 
 const createConnectionUnderTest = () =>
   Connection.connect(
@@ -28,13 +39,16 @@ const createConnectionUnderTest = () =>
 
 beforeEach(() => {
   fetchMock.mockReset();
+  resetMockWebSocket(MockWebSocket);
   vi.useFakeTimers();
 });
 
 describe("Connection.connect, when passed connection options", () => {
   test("accepts valid arguments", async () => {
     simulateImmediatelyReadySession(fetchMock);
+    simulateImmediatelyOpenSocket(MockWebSocket);
     const connection = createConnectionUnderTest();
+    vi.runAllTimersAsync();
     await expect(connection).resolves.toBeInstanceOf(Connection);
   });
 
@@ -46,6 +60,7 @@ describe("Connection.connect, when passed connection options", () => {
       },
       testHarness,
     );
+    vi.runAllTimersAsync();
     await expect(connection).rejects.toBeInstanceOf(Error);
     expect(fetchMock).not.toHaveBeenCalled();
   });
@@ -54,6 +69,7 @@ describe("Connection.connect, when passed connection options", () => {
 describe("Connection.connect, when establishing SQL session", () => {
   test("polls until READY state is reached", async () => {
     simulateSessionCreationLifecycle(fetchMock);
+    simulateImmediatelyOpenSocket(MockWebSocket);
     const connection = createConnectionUnderTest();
     vi.runAllTimersAsync();
     await expect(connection).resolves.toBeInstanceOf(Connection);
@@ -62,6 +78,7 @@ describe("Connection.connect, when establishing SQL session", () => {
 
   test("rejects if session create fails", async () => {
     simulateSessionCreateUnauthenticated(fetchMock);
+    simulateImmediatelyOpenSocket(MockWebSocket);
     const connection = createConnectionUnderTest();
     await expect(connection).rejects.toBeInstanceOf(Error);
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -69,6 +86,7 @@ describe("Connection.connect, when establishing SQL session", () => {
 
   test("rejects if session create has invalid response", async () => {
     simulateSessionCreateInvalidResponse(fetchMock);
+    simulateImmediatelyOpenSocket(MockWebSocket);
     const connection = createConnectionUnderTest();
     await expect(connection).rejects.toBeInstanceOf(Error);
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -76,6 +94,7 @@ describe("Connection.connect, when establishing SQL session", () => {
 
   test("rejects if session server returns error while polling", async () => {
     simulateSessionServiceError(fetchMock, { numInitialSuccesses: 2 });
+    simulateImmediatelyOpenSocket(MockWebSocket);
     const connection = createConnectionUnderTest();
     await expect(connection).rejects.toBeInstanceOf(Error);
     expect(fetchMock).toHaveBeenCalledTimes(3);
@@ -83,6 +102,7 @@ describe("Connection.connect, when establishing SQL session", () => {
 
   test("rejects if session server returns error while polling", async () => {
     simulateSessionPollInvalidResponse(fetchMock, { numInitialSuccesses: 2 });
+    simulateImmediatelyOpenSocket(MockWebSocket);
     const connection = createConnectionUnderTest();
     await expect(connection).rejects.toBeInstanceOf(Error);
     expect(fetchMock).toHaveBeenCalledTimes(3);
