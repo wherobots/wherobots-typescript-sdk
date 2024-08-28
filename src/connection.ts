@@ -19,6 +19,15 @@ type ConnectionTestHarness = {
 };
 
 export class Connection {
+  public static async connect(
+    options: ConnectionOptions,
+    testHarness?: ConnectionTestHarness,
+  ) {
+    const connection = new Connection(options, testHarness);
+    await connection.establishSession();
+    return connection;
+  }
+
   private options: ConnectionOptionsNormalized;
   private fetch: ReturnType<typeof fetchBuilder<typeof fetch>>;
   private headers: Record<string, string>;
@@ -32,7 +41,6 @@ export class Connection {
     this.fetch = fetchBuilder(testHarness?.fetch || fetch);
     const { apiKey, ...optionsToLog } = this.options;
     logger.child(optionsToLog).debug("Creating connection");
-    this.establishSession();
   }
 
   public close(): void {

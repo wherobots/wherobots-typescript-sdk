@@ -1,2 +1,3 @@
 export * from "./constants";
-export * from "./connection";
+export { Connection } from "./connection";
+export { type ConnectionOptions } from "./schemas";
