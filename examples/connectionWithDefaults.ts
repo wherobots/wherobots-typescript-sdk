@@ -21,6 +21,6 @@ import { Utf8 } from "apache-arrow";
   const results = await conn.execute<{ namespace: Utf8 }>(
     "SHOW SCHEMAS IN wherobots_open_data",
   );
-  console.log(results);
+  console.log(results.toArray());
   setTimeout(() => conn.close(), 5000);
 })();

@@ -50,7 +50,7 @@ export type ConnectionOptionsNormalized = z.infer<
 // Schema-definitions for creating the session via REST
 
 const AppMetaSchema = z.object({
-  url: z.string(),
+  url: z.string().url(),
 });
 
 export const SessionResponseSchema = z.object({

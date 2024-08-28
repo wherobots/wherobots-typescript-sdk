@@ -148,30 +148,36 @@ export class Connection {
       throw new Error("WebSocket is not open");
     }
     const executionId = uuid.v4();
+    const executionSuccessPromise = this.waitForMessage(
+      executionId,
+      StateUpdatedEventSchema,
+    );
     const executeEvent: ExecuteSQLEvent = {
       kind: "execute_sql",
       execution_id: executionId,
       statement,
     };
     this.ws.send(JSON.stringify(executeEvent));
+    logger
+      .child({ executionId })
+      .debug("Waiting for execution to be successful");
+    await executionSuccessPromise;
 
-    logger.child({ executionId }).debug("Waiting for execution to be running");
-    await this.waitForMessage(executionId, StateUpdatedEventSchema);
-
+    const resultsPromise = this.waitForMessage(
+      executionId,
+      ExecutionResultEventSchema,
+    );
     const retrieveEvent: RetrieveResultsEvent = {
       kind: "retrieve_results",
       execution_id: executionId,
       geometry_representation: this.options.geometryRepresentation,
     };
     this.ws.send(JSON.stringify(retrieveEvent));
-
     logger
       .child({ executionId })
       .debug("Waiting for execution result to succeed");
-    const results = await this.waitForMessage(
-      executionId,
-      ExecutionResultEventSchema,
-    );
+    const results = await resultsPromise;
+
     const decompressed = await decompressPayload(
       results.results.result_bytes,
       results.results.compression,

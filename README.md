@@ -26,7 +26,7 @@ import { Connection, Runtime } from "wherobots";
     runtime: Runtime.SEDONA,
   });
   const results = await conn.execute("SHOW SCHEMAS IN wherobots_open_data");
-  console.log(results);
+  console.log(results.toArray());
   conn.close();
 })();
 ```
