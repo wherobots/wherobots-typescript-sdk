@@ -170,7 +170,7 @@ export class Connection {
     const retrieveEvent: RetrieveResultsEvent = {
       kind: "retrieve_results",
       execution_id: executionId,
-      geometry_representation: this.options.geometryRepresentation,
+      geometry: this.options.geometryRepresentation,
     };
     this.ws.send(JSON.stringify(retrieveEvent));
     logger

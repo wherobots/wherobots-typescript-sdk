@@ -19,7 +19,7 @@ const ConnectionOptionsSchema = z.object({
   region: z.nativeEnum(Region).optional(),
   resultsFormat: z.literal(ResultsFormat.ARROW).optional(),
   dataCompression: z.literal(DataCompression.BROTLI).optional(),
-  geometryRepresentation: z.literal(GeometryRepresentation.EWKT).optional(),
+  geometryRepresentation: z.nativeEnum(GeometryRepresentation).optional(),
 });
 
 export type ConnectionOptions = z.infer<typeof ConnectionOptionsSchema>;
@@ -84,7 +84,7 @@ export type ExecuteSQLEvent = z.infer<typeof ExecuteSQLEventSchema>;
 export const RetrieveResultsEventSchema = z.object({
   kind: z.literal("retrieve_results"),
   execution_id: ExecutionIdSchema,
-  geometry_representation: z.nativeEnum(GeometryRepresentation),
+  geometry: z.nativeEnum(GeometryRepresentation),
 });
 
 export type RetrieveResultsEvent = z.infer<typeof RetrieveResultsEventSchema>;
