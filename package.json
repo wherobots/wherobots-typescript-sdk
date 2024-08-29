@@ -1,9 +1,24 @@
 {
   "name": "wherobots",
   "version": "0.1.0-alpha.0",
-  "description": "Typescript SDK for Wherobots DB",
-  "main": "index.js",
+  "description": "TypeScript SDK for Wherobots DB",
   "license": "Apache-2.0",
+  "main": "dist/src/index.js",
+  "files": [
+    "dist/src/**"
+  ],
+  "keywords": [
+    "wherobots",
+    "sedona",
+    "geospatial",
+    "spatial sql"
+  ],
+  "homepage": "https://github.com/wherobots/wherobots-typescript-sdk",
+  "bugs": "https://github.com/wherobots/wherobots-typescript-sdk/issues",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wherobots/wherobots-typescript-sdk"
+  },
   "engines": {
     "node": ">=18.0.0"
   },
