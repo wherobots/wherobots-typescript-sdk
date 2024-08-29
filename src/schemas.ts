@@ -8,6 +8,9 @@ import {
   SessionStatus,
 } from "./constants";
 
+//////////////////////////////////////////////////////////////////////////
+// Schema-definitions for connection options from the consumer
+
 // A schema for the options that are passed to the Connection contstructor,
 // used to generate the typescript type for that constructor
 const ConnectionOptionsSchema = z.object({
@@ -43,17 +46,77 @@ export type ConnectionOptionsNormalized = z.infer<
   typeof ConnectionOptionsSchemaNormalized
 >;
 
+//////////////////////////////////////////////////////////////////////////
+// Schema-definitions for creating the session via REST
+
+const AppMetaSchema = z.object({
+  url: z.string().url(),
+});
+
 export const SessionResponseSchema = z.object({
   id: z.string(),
   status: z.nativeEnum(SessionStatus),
-  appMeta: z
-    .object({
-      url: z.string(),
-    })
-    .nullable()
-    .optional(),
+  appMeta: AppMetaSchema.nullable().optional(),
   traces: z.object({}).passthrough().nullable(),
   message: z.string().nullable(),
 });
 
 export type SessionReponse = z.infer<typeof SessionResponseSchema>;
+
+export const ReadySessionResponseSchema = SessionResponseSchema.extend({
+  status: z.literal(SessionStatus.READY),
+  appMeta: AppMetaSchema,
+});
+
+//////////////////////////////////////////////////////////////////////////
+// Schema-definitions for executing SQL over web socket
+
+const ExecutionIdSchema = z.string().min(1).max(255);
+
+export const ExecuteSQLEventSchema = z.object({
+  kind: z.literal("execute_sql"),
+  execution_id: ExecutionIdSchema,
+  statement: z.string().min(1),
+});
+
+export type ExecuteSQLEvent = z.infer<typeof ExecuteSQLEventSchema>;
+
+export const RetrieveResultsEventSchema = z.object({
+  kind: z.literal("retrieve_results"),
+  execution_id: ExecutionIdSchema,
+  geometry_representation: z.nativeEnum(GeometryRepresentation),
+});
+
+export type RetrieveResultsEvent = z.infer<typeof RetrieveResultsEventSchema>;
+
+export const EventWithExecutionIdSchema = z.object({
+  execution_id: ExecutionIdSchema,
+});
+
+export const StateUpdatedEventSchema = EventWithExecutionIdSchema.extend({
+  kind: z.literal("state_updated"),
+  state: z.literal("succeeded"),
+});
+
+export type StateUpdatedEvent = z.infer<typeof StateUpdatedEventSchema>;
+
+export const ExecutionResultEventSchema = EventWithExecutionIdSchema.extend({
+  kind: z.literal("execution_result"),
+  state: z.literal("succeeded"),
+  results: z.object({
+    result_bytes: z.instanceof(Buffer),
+    compression: z.nativeEnum(DataCompression),
+    format: z.nativeEnum(ResultsFormat),
+    geometry: z.nativeEnum(GeometryRepresentation),
+    geo_columns: z.array(z.string()),
+  }),
+});
+
+export type ExecutionResultEvent = z.infer<typeof ExecutionResultEventSchema>;
+
+export const ErrorEventSchema = EventWithExecutionIdSchema.extend({
+  kind: z.literal("error"),
+  message: z.string(),
+});
+
+export type ErrorEvent = z.infer<typeof ErrorEventSchema>;

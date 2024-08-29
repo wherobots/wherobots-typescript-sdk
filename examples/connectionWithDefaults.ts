@@ -9,6 +9,7 @@
  */
 
 import { Connection, Runtime } from "@/index";
+import { Utf8 } from "apache-arrow";
 
 (async () => {
   const conn = await Connection.connect({
@@ -17,5 +18,9 @@ import { Connection, Runtime } from "@/index";
       "00000000-0000-0000-0000-000000000000",
     runtime: Runtime.SEDONA,
   });
+  const results = await conn.execute<{ namespace: Utf8 }>(
+    "SHOW SCHEMAS IN wherobots_open_data",
+  );
+  console.log(results.toArray());
   setTimeout(() => conn.close(), 5000);
 })();
