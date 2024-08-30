@@ -5,7 +5,7 @@
  * 
  * or for verbose logging:
  * 
- *   `NODE_DEBUG="wherobots" WHEROBOTS_API_KEY=<api key> node -r @swc-node/register examples/connectionWithDefaults.ts`
+ *   `NODE_DEBUG="wherobots-sql-driver" WHEROBOTS_API_KEY=<api key> node -r @swc-node/register examples/connectionWithDefaults.ts`
  */
 
 import { Connection, Runtime } from "@/index";

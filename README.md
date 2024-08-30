@@ -16,7 +16,7 @@ API interfaces are subject to change.
 ## Installation
 
 ```
-$ npm install wherobots
+$ npm install wherobots-sql-driver
 ```
 
 ## Usage
@@ -27,7 +27,7 @@ This example follows the typical pattern of an `async` function to establish the
 After establishing this connection, you can call `async` methods to execute SQL queries through this connection.
 
 ```ts
-import { Connection, Runtime } from "wherobots";
+import { Connection, Runtime } from "wherobots-sql-driver";
 
 (async () => {
   const conn = await Connection.connect({

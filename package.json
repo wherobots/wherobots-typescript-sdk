@@ -1,5 +1,5 @@
 {
-  "name": "wherobots",
+  "name": "wherobots-sql-driver",
   "version": "0.1.0-alpha.0",
   "description": "TypeScript SDK for Wherobots DB",
   "license": "Apache-2.0",

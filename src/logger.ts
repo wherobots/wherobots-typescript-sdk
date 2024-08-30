@@ -3,10 +3,10 @@ import { SessionReponse } from "./schemas";
 
 const shouldUseDebugLogging = (process.env["NODE_DEBUG"] || "")
   .split(",")
-  .includes("wherobots");
+  .includes("wherobots-sql-driver");
 
 const logger = pino({
-  name: "wherobots",
+  name: "wherobots-sql-driver",
   level: shouldUseDebugLogging ? "debug" : "info",
   transport: {
     target: "pino-pretty",
