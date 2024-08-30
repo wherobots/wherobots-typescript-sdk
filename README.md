@@ -113,7 +113,7 @@ The `Connection.connect()` can take the following additional options:
   values; selects the encoding of geometry columns returned to the
   client application. The default is EWKT (string) and the most
   convenient for human inspection while still being usable by
-  libraries like Shapely.
+  geospatial data manipulation libraries.
 
 - `region`: Currently, the only supported Wherobots compute region is `aws-us-west-2`,
   in AWS's Oregon (`us-west-2`) region.
