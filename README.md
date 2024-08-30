@@ -1,10 +1,10 @@
 # Wherobots TypesSript SDK
 
-TypeScript SDK for interacting with Wherobots DB. This package implements a Node.js
-client to programmatically connect to a Wherobots DB runtime and execute Spatial SQL queries.
+TypeScript SDK for interacting with WherobotsDB. This package implements a Node.js
+client that programmatically connects to a WherobotsDB runtime and execute Spatial SQL queries.
 
-:warning: WARNING: This package is currently in Alpha. It is not recommended for production use.
-API interfaces may be subject to change.
+:warning: WARNING: This package is currently in Alpha. It is not recommended for use in production.
+API interfaces are subject to change.
 
 ## Prerequisites
 
@@ -21,17 +21,17 @@ $ npm install wherobots
 
 ## Usage
 
-### Executing an SQL statement and printing the results
+### Example: Executing SQL statement and printing results
 
-Follows the typical pattern of an async function to establish the connection,
-which provides async methods for executing SQL queries through it:
+This example follows the typical pattern of an `async` function to establish the connection to WherobotsDB.
+After establishing this connection, you can call `async` methods to execute SQL queries through this connection.
 
 ```ts
 import { Connection, Runtime } from "wherobots";
 
 (async () => {
   const conn = await Connection.connect({
-    apiKey: "<api-key>",
+    apiKey: "YOUR-API-KEY",
     runtime: Runtime.SEDONA,
   });
   const results = await conn.execute("SHOW SCHEMAS IN wherobots_open_data");
@@ -40,7 +40,7 @@ import { Connection, Runtime } from "wherobots";
 })();
 ```
 
-Running this code will output the results of the query as JSON:
+Running this example returns the results of the query as JSON:
 
 ```
 [
@@ -95,8 +95,7 @@ information on runtime sizing and selection, please consult the
 
 ### Additional parameters
 
-The `Connection.connect()` function takes some additional options that
-can be optionally specified:
+The `Connection.connect()` can take the following additional options:
 
 - `resultsFormat`: one of the `ResultsFormat` enum values;
   Arrow encoding is the default and most efficient format for
@@ -116,6 +115,6 @@ can be optionally specified:
   convenient for human inspection while still being usable by
   libraries like Shapely.
 
-- `region`: The only supported Wherobots compute region for now is `aws-us-west-2`,
+- `region`: Currently, the only supported Wherobots compute region is `aws-us-west-2`,
   in AWS's Oregon (`us-west-2`) region. In future, specifying a different region
   will be possible using the `Region` enum values.
