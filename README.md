@@ -1,4 +1,4 @@
-# Wherobots TypesSript SDK
+# Wherobots TypeScript SDK
 
 TypeScript SDK for interacting with WherobotsDB. This package implements a Node.js
 client that programmatically connects to a WherobotsDB runtime and execute Spatial SQL queries.
@@ -116,5 +116,4 @@ The `Connection.connect()` can take the following additional options:
   libraries like Shapely.
 
 - `region`: Currently, the only supported Wherobots compute region is `aws-us-west-2`,
-  in AWS's Oregon (`us-west-2`) region. In future, specifying a different region
-  will be possible using the `Region` enum values.
+  in AWS's Oregon (`us-west-2`) region.
