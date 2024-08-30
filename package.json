@@ -4,9 +4,6 @@
   "description": "TypeScript SDK for Wherobots DB",
   "license": "Apache-2.0",
   "main": "dist/src/index.js",
-  "files": [
-    "dist/src/**"
-  ],
   "keywords": [
     "wherobots",
     "sedona",
