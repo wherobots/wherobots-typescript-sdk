@@ -1,4 +1,4 @@
-import { decodeAllSync } from "cbor";
+import { decodeFirstSync } from "cbor";
 import fetchBuilder from "fetch-retry";
 import * as uuid from "uuid";
 import WebSocket from "ws";
@@ -73,6 +73,7 @@ export class Connection {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     listener: (e: any) => void | never;
   }[] = [];
+  private executionAbortController = new AbortController();
 
   constructor(options: ConnectionOptions, testHarness?: ConnectionTestHarness) {
     this.options = ConnectionOptionsSchemaNormalized.parse(options);
@@ -135,10 +136,15 @@ export class Connection {
     this.addWsListener("error", this.onWsError);
     this.addWsListener("close", this.onWsClose);
 
-    await new Promise((resolve) => {
+    await new Promise((resolve, reject) => {
       this.addWsListener("open", resolve, { once: true });
+      this.executionAbortController.signal.addEventListener("abort", () =>
+        reject(new Error("Connection aborted")),
+      );
     });
-    logger.child({ wsUrl }).debug("WebSocket connection is open");
+    logger
+      .child({ wsUrl: urlWithProtocol })
+      .debug("WebSocket connection is open");
   }
 
   public async execute<Schema extends TypeMap = TypeMap>(
@@ -190,24 +196,33 @@ export class Connection {
     executionId: string,
     schema: T,
   ): Promise<z.infer<T>> {
-    return new Promise<z.infer<T>>((resolve) => {
+    return new Promise<z.infer<T>>((resolve, reject) => {
+      this.executionAbortController.signal.addEventListener("abort", () =>
+        reject(new Error("Execution aborted")),
+      );
+      if (this.executionAbortController.signal.aborted) {
+        reject(new Error("Execution aborted"));
+        return;
+      }
+
       const handleMessage = (e: WebSocket.MessageEvent) => {
         try {
-          const { success: isError, data: errorEvent } =
-            ErrorEventSchema.safeParse(e.data);
-          if (isError) {
-            logger.child(errorEvent).error("Error event received");
-            cleanup();
-            throw new Error("Error event received");
+          if (typeof e.data === "string") {
+            const { success: isError, data: errorEvent } =
+              ErrorEventSchema.safeParse(JSON.parse(e.data));
+            if (isError) {
+              logger.child(errorEvent).error("Error event received");
+              cleanup();
+              reject(new Error("Error event received"));
+            }
           }
           let toParse: unknown;
           if (typeof e.data === "string") {
             toParse = JSON.parse(e.data);
           } else if (Array.isArray(e.data)) {
-            toParse = decodeAllSync(Buffer.concat(e.data))[0];
+            toParse = decodeFirstSync(Buffer.concat(e.data));
           } else {
-            const res = decodeAllSync(e.data);
-            toParse = res[0];
+            toParse = decodeFirstSync(e.data);
           }
           const data = schema.parse(toParse);
           if (data["execution_id"] === executionId) {
@@ -242,7 +257,6 @@ export class Connection {
   private onWsError(e: WebSocket.ErrorEvent) {
     logger.child({ message: e.message }).error("Web Socket error");
     this.close();
-    throw new Error("Web Socket error");
   }
 
   private onWsClose(e: WebSocket.CloseEvent) {
@@ -250,11 +264,11 @@ export class Connection {
       .child({ wasClean: e, code: e.code, reason: e.code })
       .error("Web Socket closed unexpectedly");
     this.close();
-    throw new Error("Web Socket closed unexpectedly");
   }
 
   public close(): void {
     logger.debug("Closing connection");
+    this.executionAbortController.abort();
     if (this.ws) {
       this.wsListeners.forEach((l) =>
         this.ws?.removeEventListener(l.name, l.listener),

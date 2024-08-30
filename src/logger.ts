@@ -11,6 +11,7 @@ const logger = pino({
   transport: {
     target: "pino-pretty",
   },
+  enabled: process.env["NODE_ENV"] !== "test",
 });
 
 export default logger;

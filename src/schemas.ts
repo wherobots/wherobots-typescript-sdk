@@ -57,8 +57,8 @@ export const SessionResponseSchema = z.object({
   id: z.string(),
   status: z.nativeEnum(SessionStatus),
   appMeta: AppMetaSchema.nullable().optional(),
-  traces: z.object({}).passthrough().nullable(),
-  message: z.string().nullable(),
+  traces: z.object({}).passthrough().nullable().optional(),
+  message: z.string().nullable().optional(),
 });
 
 export type SessionReponse = z.infer<typeof SessionResponseSchema>;
