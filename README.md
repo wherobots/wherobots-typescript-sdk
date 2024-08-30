@@ -31,7 +31,7 @@ import { Connection, Runtime } from "wherobots";
 
 (async () => {
   const conn = await Connection.connect({
-    apiKey: "YOUR-API-KEY",
+    apiKey: "YOUR-WHEROBOTS-API-KEY",
     runtime: Runtime.SEDONA,
   });
   const results = await conn.execute("SHOW SCHEMAS IN wherobots_open_data");
