@@ -10,6 +10,7 @@ const logger = pino(
   {
     name: "wherobots-sql-driver",
     level: shouldUseDebugLogging ? "debug" : "info",
+    enabled: process.env["NODE_ENV"] !== "test",
   },
   pinoPretty(),
 );

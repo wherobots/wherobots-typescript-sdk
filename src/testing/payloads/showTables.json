@@ -1,0 +1,32 @@
+[
+  {
+    "namespace": "overture",
+    "tableName": "transportation_connector",
+    "isTemporary": false
+  },
+  {
+    "namespace": "overture",
+    "tableName": "transportation_segment",
+    "isTemporary": false
+  },
+  {
+    "namespace": "overture",
+    "tableName": "admins_locality",
+    "isTemporary": false
+  },
+  {
+    "namespace": "overture",
+    "tableName": "places_place",
+    "isTemporary": false
+  },
+  {
+    "namespace": "overture",
+    "tableName": "buildings_building",
+    "isTemporary": false
+  },
+  {
+    "namespace": "overture",
+    "tableName": "admins_administrativeBoundary",
+    "isTemporary": false
+  }
+]
