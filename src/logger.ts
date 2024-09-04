@@ -1,18 +1,19 @@
 import pino from "pino";
+import pinoPretty from "pino-pretty";
 import { SessionReponse } from "./schemas";
 
 const shouldUseDebugLogging = (process.env["NODE_DEBUG"] || "")
   .split(",")
-  .includes("wherobots");
+  .includes("wherobots-sql-driver");
 
-const logger = pino({
-  name: "wherobots",
-  level: shouldUseDebugLogging ? "debug" : "info",
-  transport: {
-    target: "pino-pretty",
+const logger = pino(
+  {
+    name: "wherobots-sql-driver",
+    level: shouldUseDebugLogging ? "debug" : "info",
+    enabled: process.env["NODE_ENV"] !== "test",
   },
-  enabled: process.env["NODE_ENV"] !== "test",
-});
+  pinoPretty(),
+);
 
 export default logger;
 
