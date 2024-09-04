@@ -9,7 +9,8 @@
     "declaration": true,
     "paths": {
       "@/*": ["./src/*"]
-    }
+    },
+    "outDir": "./dist",
   },
   "include": ["**/*.ts", "**/*.mts"],
   "exclude": ["node_modules"]
