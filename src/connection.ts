@@ -63,7 +63,7 @@ export class Connection {
 
   private options: ConnectionOptionsNormalized;
   private fetch: ReturnType<typeof fetchBuilder<typeof fetch>>;
-  private headers: Record<string, string>;
+  private fetchOptions: RequestInit;
   private WebSocket: ConnectionTestHarness["WebSocket"];
   private ws: WebSocketApiSubset | null = null;
   private wsListeners: {
@@ -77,9 +77,18 @@ export class Connection {
 
   constructor(options: ConnectionOptions, testHarness?: ConnectionTestHarness) {
     this.options = ConnectionOptionsSchemaNormalized.parse(options);
-    this.headers = {
-      "Content-Type": "application/json",
-      "X-API-Key": this.options.apiKey,
+    this.fetchOptions = {
+      headers: {
+        "Content-Type": "application/json",
+        "X-API-Key": this.options.apiKey,
+        "Cache-Control": "no-store",
+      },
+      signal: this.executionAbortController.signal,
+      // the types we're using don't recognize the `cache` option
+      // even though it is a valid option for the fetch API
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      cache: "no-store",
     };
     this.fetch = fetchBuilder(testHarness?.fetch || fetch);
     this.WebSocket = testHarness?.WebSocket || WebSocket;
@@ -95,7 +104,7 @@ export class Connection {
         body: JSON.stringify({
           runtimeId: this.options.runtime,
         }),
-        headers: this.headers,
+        ...this.fetchOptions,
       },
     ).then((res) => parseResponse(res, SessionResponseSchema));
     sessionContextLogger(createdSession).debug("Session created");
@@ -103,7 +112,7 @@ export class Connection {
     const establishedSession = await this.fetch(
       `${API_URL}/sql/session/${createdSession.id}`,
       {
-        headers: this.headers,
+        ...this.fetchOptions,
         retryDelay: backoffRetry,
         retryOn: async (_, error, res) => {
           if (!error && res) {
