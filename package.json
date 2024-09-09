@@ -55,6 +55,7 @@
   },
   "dependencies": {
     "apache-arrow": "^17.0.0",
+    "bufferutil": "^4.0.8",
     "cbor": "^9.0.2",
     "fetch-retry": "^6.0.0",
     "pino": "^9.3.2",
