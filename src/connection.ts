@@ -76,7 +76,15 @@ export class Connection {
   private executionAbortController = new AbortController();
 
   constructor(options: ConnectionOptions, testHarness?: ConnectionTestHarness) {
-    this.options = ConnectionOptionsSchemaNormalized.parse(options);
+    this.options = ConnectionOptionsSchemaNormalized.parse({
+      apiKey: process.env["WHEROBOTS_API_KEY"],
+      ...options,
+    });
+    if (!this.options.apiKey) {
+      throw new Error(
+        "API key is required. It can be passed as an option or set as the WHEROBOTS_API_KEY environment variable",
+      );
+    }
     this.fetchOptions = {
       headers: {
         "Content-Type": "application/json",
