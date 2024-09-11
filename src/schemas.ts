@@ -13,8 +13,11 @@ import {
 
 // A schema for the options that are passed to the Connection contstructor,
 // used to generate the typescript type for that constructor
+
+const apiKeySchema = z.string().min(1).max(255);
+
 const ConnectionOptionsSchema = z.object({
-  apiKey: z.string().min(1).max(255),
+  apiKey: apiKeySchema.optional(),
   runtime: z.nativeEnum(Runtime),
   region: z.nativeEnum(Region).optional(),
   resultsFormat: z.literal(ResultsFormat.ARROW).optional(),
@@ -28,6 +31,7 @@ export type ConnectionOptions = z.infer<typeof ConnectionOptionsSchema>;
 // for all optional fields
 export const ConnectionOptionsSchemaNormalized = ConnectionOptionsSchema.extend(
   {
+    apiKey: apiKeySchema,
     region: ConnectionOptionsSchema.shape.region.default(Region.AWS_US_WEST_2),
     resultsFormat: ConnectionOptionsSchema.shape.resultsFormat.default(
       ResultsFormat.ARROW,

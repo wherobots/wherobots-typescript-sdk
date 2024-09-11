@@ -47,11 +47,22 @@ const testHarness = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   WebSocket: MockWebSocket as any,
 };
+const testApiKey = "12345678-1234-1234-1234-123456789ab";
+const expectCorrectApiKey = () => {
+  expect(fetchMock).toHaveBeenCalledWith(
+    expect.any(String),
+    expect.objectContaining({
+      headers: expect.objectContaining({
+        "X-API-Key": testApiKey,
+      }),
+    }),
+  );
+};
 
 const createConnectionUnderTest = () =>
   Connection.connect(
     {
-      apiKey: "00000000-0000-0000-0000-000000000000",
+      apiKey: testApiKey,
       runtime: Runtime.SEDONA,
     },
     testHarness,
@@ -70,12 +81,45 @@ describe("Connection.connect, when passed connection options", () => {
     const connection = createConnectionUnderTest();
     vi.runAllTimersAsync();
     await expect(connection).resolves.toBeInstanceOf(Connection);
+    expectCorrectApiKey();
+  });
+
+  test("rejects if API key is missing", async () => {
+    const connection = Connection.connect(
+      {
+        runtime: Runtime.SEDONA,
+      },
+      testHarness,
+    );
+    vi.runAllTimersAsync();
+    await expect(connection).rejects.toBeInstanceOf(Error);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  test("does not reject if API key is set via env variable", async () => {
+    simulateImmediatelyReadySession(fetchMock);
+    simulateImmediatelyOpenSocket(MockWebSocket);
+    const previousApiKey = process.env["WHEROBOTS_API_KEY"];
+    process.env["WHEROBOTS_API_KEY"] = testApiKey;
+    try {
+      const connection = Connection.connect(
+        {
+          runtime: Runtime.SEDONA,
+        },
+        testHarness,
+      );
+      vi.runAllTimersAsync();
+      await expect(connection).resolves.toBeInstanceOf(Connection);
+      expectCorrectApiKey();
+    } finally {
+      process.env["WHEROBOTS_API_KEY"] = previousApiKey;
+    }
   });
 
   test("rejects if given invalid arguments", async () => {
     const connection = Connection.connect(
       {
-        apiKey: "00000000-0000-0000-0000-000000000000",
+        apiKey: testApiKey,
         runtime: "invalid" as unknown as Runtime,
       },
       testHarness,

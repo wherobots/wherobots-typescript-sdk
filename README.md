@@ -31,6 +31,8 @@ import { Connection, Runtime } from "wherobots-sql-driver";
 
 (async () => {
   const conn = await Connection.connect({
+    // replace "YOUR-WHEROBOTS-API-KEY" with the key created above
+    // or alternatively the key can be set with the `WHEROBOTS_API_KEY` environment variable
     apiKey: "YOUR-WHEROBOTS-API-KEY",
     runtime: Runtime.SEDONA,
   });
