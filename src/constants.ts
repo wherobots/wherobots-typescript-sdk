@@ -55,3 +55,5 @@ export enum SessionStatus {
   DESTROY_FAILED = "DESTROY_FAILED",
   DESTROYED = "DESTROYED",
 }
+
+export const MIN_PROTOCOL_VERSION_FOR_CANCEL = "1.1.0";

@@ -1,9 +1,11 @@
 import { decodeFirstSync } from "cbor";
 import fetchBuilder from "fetch-retry";
+import semver from "semver";
 import * as uuid from "uuid";
 import WebSocket from "ws";
 import logger, { sessionContextLogger } from "./logger";
 import {
+  CancelExecutionEvent,
   ConnectionOptions,
   ConnectionOptionsNormalized,
   ConnectionOptionsSchemaNormalized,
@@ -27,6 +29,7 @@ import {
 } from "./api-utils";
 import z from "zod";
 import { Table, TypeMap } from "apache-arrow";
+import { MIN_PROTOCOL_VERSION_FOR_CANCEL } from "./constants";
 
 // used to mock out the fetch and WebSocket APIs
 // in a unit testing environment
@@ -39,6 +42,7 @@ type ConnectionTestHarness = {
   WebSocket: {
     new (url: string, options?: WebSocket.ClientOptions): WebSocketApiSubset;
   };
+  protocolVersion?: string | undefined;
 };
 
 const API_URL =
@@ -71,6 +75,7 @@ export class Connection {
   private fetchOptions: RequestInit;
   private WebSocket: ConnectionTestHarness["WebSocket"];
   private ws: WebSocketApiSubset | null = null;
+  private protocolVersion: string;
   private wsListeners: {
     name: keyof WebSocket.WebSocketEventMap;
     // for purposes of tracking and automatically cleaning up listeners,
@@ -105,6 +110,7 @@ export class Connection {
     };
     this.fetch = fetchBuilder(testHarness?.fetch || fetch);
     this.WebSocket = testHarness?.WebSocket || WebSocket;
+    this.protocolVersion = testHarness?.protocolVersion || PROTOCOL_VERSION;
     const { apiKey, ...optionsToLog } = this.options;
     logger.child(optionsToLog).debug("Creating connection");
   }
@@ -147,7 +153,7 @@ export class Connection {
   }
 
   private async connectToWebSocket(wsUrl: string) {
-    const urlWithProtocol = `${wsUrl}/${PROTOCOL_VERSION}`;
+    const urlWithProtocol = `${wsUrl}/${this.protocolVersion}`;
     logger
       .child({ wsUrl: urlWithProtocol })
       .debug("Opening WebSocket connection");
@@ -227,11 +233,23 @@ export class Connection {
     abortSignal: AbortSignal,
   ): Promise<z.infer<T>> {
     return new Promise<z.infer<T>>((resolve, reject) => {
+      const sendCancellation = () => {
+        if (semver.gte(this.protocolVersion, MIN_PROTOCOL_VERSION_FOR_CANCEL)) {
+          logger.child({ executionId }).debug("Sending cancel event");
+          const cancelEvent: CancelExecutionEvent = {
+            kind: "cancel",
+            execution_id: executionId,
+          };
+          this.ws?.send(JSON.stringify(cancelEvent));
+        }
+      };
       abortSignal.addEventListener("abort", () => {
+        sendCancellation();
         cleanup();
         reject(new Error("Execution aborted"));
       });
       if (abortSignal.aborted) {
+        sendCancellation();
         reject(new Error("Execution aborted"));
         return;
       }

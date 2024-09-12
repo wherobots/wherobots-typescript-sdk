@@ -5,7 +5,7 @@ import { expect, test, describe, vi, beforeEach } from "vitest";
 // @ts-ignore
 import fetchMockBuilder from "vitest-fetch-mock";
 import { Connection } from "./connection";
-import { Runtime } from "./constants";
+import { MIN_PROTOCOL_VERSION_FOR_CANCEL, Runtime } from "./constants";
 import {
   SESSION_LIFECYCLE_RESPONSES,
   simulateImmediatelyReadySession,
@@ -62,13 +62,13 @@ const expectCorrectApiKey = () => {
   );
 };
 
-const createConnectionUnderTest = () =>
+const createConnectionUnderTest = (protocolVersion?: string) =>
   Connection.connect(
     {
       apiKey: testApiKey,
       runtime: Runtime.SEDONA,
     },
-    testHarness,
+    { ...testHarness, protocolVersion },
   );
 
 beforeEach(() => {
@@ -275,6 +275,35 @@ describe("Connection#execute, when executing a single SQL statement", async () =
     await expect(result).rejects.toBeInstanceOf(Error);
     expect(getSentMessages(MockWebSocket)).toEqual([
       expect.objectContaining({ kind: "execute_sql" }),
+    ]);
+    expect(wasSocketClosed(MockWebSocket)).toEqual(false);
+  });
+
+  test("sends cancellation if execution is aborted for protocol version >= 1.1.0", async () => {
+    simulateImmediatelyReadySession(fetchMock);
+    const { resume } = simulateSocketWithSingleExecutionPaused(MockWebSocket);
+    const connection = createConnectionUnderTest(
+      MIN_PROTOCOL_VERSION_FOR_CANCEL,
+    );
+    vi.runAllTimersAsync();
+    const abortController = new AbortController();
+    const result = (await connection).execute(
+      "SHOW SCHEMAS IN wherobots_open_data",
+      { signal: abortController.signal },
+    );
+    vi.runAllTimersAsync();
+    expect(getSentMessages(MockWebSocket)).toEqual([
+      expect.objectContaining({ kind: "execute_sql" }),
+    ]);
+    // aborting the execution before resuming the simulated socket should cause the promise to reject
+    // and no additional messages to be sent for this execution
+    abortController.abort();
+    resume();
+    vi.runAllTimersAsync();
+    await expect(result).rejects.toBeInstanceOf(Error);
+    expect(getSentMessages(MockWebSocket)).toEqual([
+      expect.objectContaining({ kind: "execute_sql" }),
+      expect.objectContaining({ kind: "cancel" }),
     ]);
     expect(wasSocketClosed(MockWebSocket)).toEqual(false);
   });
