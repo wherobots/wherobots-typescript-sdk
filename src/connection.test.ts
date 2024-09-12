@@ -18,6 +18,7 @@ import {
 import {
   createMockWebSocket,
   expectAllSocketListenersRemoved,
+  getSentMessages,
   resetMockWebSocket,
   simulateImmediatelyOpenSocket,
   simulateSocketWithConnectionClosed,
@@ -26,6 +27,8 @@ import {
   simulateSocketWithMultipleExecutionsOneError,
   simulateSocketWithSingleExecution,
   simulateSocketWithSingleExecutionError,
+  simulateSocketWithSingleExecutionPaused,
+  wasSocketClosed,
 } from "./testing/mockSocketBehaviors";
 
 const showSchemasExpectedPayload = JSON.parse(
@@ -193,6 +196,10 @@ describe("Connection#execute, when executing a single SQL statement", async () =
       .then((table) => table.toArray().map((row) => row.toJSON()));
     vi.runAllTimersAsync();
     await expect(result).resolves.toEqual(showSchemasExpectedPayload);
+    expect(getSentMessages(MockWebSocket)).toEqual([
+      expect.objectContaining({ kind: "execute_sql" }),
+      expect.objectContaining({ kind: "retrieve_results" }),
+    ]);
   });
 
   test("rejects if the execution returns an error", async () => {
@@ -217,6 +224,7 @@ describe("Connection#execute, when executing a single SQL statement", async () =
     );
     vi.runAllTimersAsync();
     await expect(result).rejects.toBeInstanceOf(Error);
+    expect(wasSocketClosed(MockWebSocket)).toEqual(true);
   });
 
   test("rejects if the connection is closed remotely", async () => {
@@ -243,6 +251,32 @@ describe("Connection#execute, when executing a single SQL statement", async () =
     await result;
     (await connection).close();
     expectAllSocketListenersRemoved(MockWebSocket);
+  });
+
+  test("stops listening/sending if execution is aborted", async () => {
+    simulateImmediatelyReadySession(fetchMock);
+    const { resume } = simulateSocketWithSingleExecutionPaused(MockWebSocket);
+    const connection = createConnectionUnderTest();
+    vi.runAllTimersAsync();
+    const abortController = new AbortController();
+    const result = (await connection).execute(
+      "SHOW SCHEMAS IN wherobots_open_data",
+      { signal: abortController.signal },
+    );
+    vi.runAllTimersAsync();
+    expect(getSentMessages(MockWebSocket)).toEqual([
+      expect.objectContaining({ kind: "execute_sql" }),
+    ]);
+    // aborting the execution before resuming the simulated socket should cause the promise to reject
+    // and no additional messages to be sent for this execution
+    abortController.abort();
+    resume();
+    vi.runAllTimersAsync();
+    await expect(result).rejects.toBeInstanceOf(Error);
+    expect(getSentMessages(MockWebSocket)).toEqual([
+      expect.objectContaining({ kind: "execute_sql" }),
+    ]);
+    expect(wasSocketClosed(MockWebSocket)).toEqual(false);
   });
 });
 
@@ -277,6 +311,7 @@ describe("Connection#execute, when executing multiple SQL statements", async () 
     vi.runAllTimersAsync();
     await expect(resultOne).rejects.toBeInstanceOf(Error);
     await expect(resultTwo).resolves.toEqual(showTablesExpectedPayload);
+    expect(wasSocketClosed(MockWebSocket)).toEqual(false);
   });
 
   test("removes all socket listeners when connection is closed", async () => {

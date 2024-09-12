@@ -170,6 +170,34 @@ export const simulateSocketWithSingleExecution = (
   });
 };
 
+// this simulates a socket that will pause after receiving the message to execute SQL,
+// and returns a function that will "resume" by responding to the execute SQL message,
+// and also the message to retrieve results
+export const simulateSocketWithSingleExecutionPaused = (
+  mockWebSocket: MockWebSocket,
+) => {
+  let instance: ReturnType<typeof mockWebSocketDefaultImplementation>;
+  let resumeData: string;
+  const resume = () => {
+    simulateStateUpdateSuccess(instance, resumeData);
+    instance.send.mockImplementationOnce((data: string) => {
+      simulateExecutionResult(instance, data, {
+        result_bytes: showSchemasPayloadBrotli,
+      });
+    });
+  };
+
+  mockWebSocket.mockImplementation(() => {
+    instance = mockWebSocketDefaultImplementation();
+    simulateHandleOpen(instance);
+    instance.send.mockImplementationOnce((data: string) => {
+      resumeData = data;
+    });
+    return instance;
+  });
+  return { resume };
+};
+
 export const simulateSocketWithSingleExecutionError = (
   mockWebSocket: MockWebSocket,
 ) => {
@@ -292,4 +320,16 @@ export const expectAllSocketListenersRemoved = (
   expect(
     instance?.value.removeEventListener.mock.calls.length,
   ).toBeGreaterThanOrEqual(instance?.value.addEventListener.mock.calls.length);
+};
+
+export const getSentMessages = (mockWebSocket: MockWebSocket) => {
+  const [instance] = mockWebSocket.mock.results;
+  return instance?.value.send.mock.calls.map((call: [string]) =>
+    JSON.parse(call[0]),
+  );
+};
+
+export const wasSocketClosed = (mockWebSocket: MockWebSocket) => {
+  const [instance] = mockWebSocket.mock.results;
+  return instance?.value.close.mock.calls.length > 0;
 };

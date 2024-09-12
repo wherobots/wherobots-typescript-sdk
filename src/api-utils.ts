@@ -92,3 +92,20 @@ export const decodeResults = <Schema extends TypeMap>(
       throw new Error(`Unsupported encoding: ${encoding}`);
   }
 };
+
+// we can use AbortSignal.any() once we don't support Node 18
+export const combineAbortSignals = (
+  ...signals: (AbortSignal | undefined)[]
+): AbortSignal => {
+  const controller = new AbortController();
+  signals.forEach((signal) => {
+    if (signal) {
+      if (signal.aborted) {
+        controller.abort(signal.reason);
+        return;
+      }
+      signal.addEventListener("abort", () => controller.abort(signal.reason));
+    }
+  });
+  return controller.signal;
+};

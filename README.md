@@ -95,9 +95,9 @@ parameter, passing in one of the `Runtime` enum values. For more
 information on runtime sizing and selection, please consult the
 [Wherobots product documentation](https://docs.wherobots.com).
 
-### Additional parameters
+### Additional parameters to `connect()`
 
-The `Connection.connect()` can take the following additional options:
+The `Connection.connect()` function can take the following additional options:
 
 - `resultsFormat`: one of the `ResultsFormat` enum values;
   Arrow encoding is the default and most efficient format for
@@ -119,3 +119,9 @@ The `Connection.connect()` can take the following additional options:
 
 - `region`: Currently, the only supported Wherobots compute region is `aws-us-west-2`,
   in AWS's Oregon (`us-west-2`) region.
+
+### Additional parameters to `execute()`
+
+The `Connection#execute` method can take an optional second argument, `options`:
+
+- `options.signal`: an `AbortSignal` which can be used to cancel the execution (optional)
