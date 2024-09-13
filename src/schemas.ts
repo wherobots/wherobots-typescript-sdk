@@ -93,6 +93,13 @@ export const RetrieveResultsEventSchema = z.object({
 
 export type RetrieveResultsEvent = z.infer<typeof RetrieveResultsEventSchema>;
 
+export const CancelExecutionEventSchema = z.object({
+  kind: z.literal("cancel"),
+  execution_id: ExecutionIdSchema,
+});
+
+export type CancelExecutionEvent = z.infer<typeof CancelExecutionEventSchema>;
+
 export const EventWithExecutionIdSchema = z.object({
   execution_id: ExecutionIdSchema,
 });

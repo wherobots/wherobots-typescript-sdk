@@ -1,9 +1,11 @@
 import { decodeFirstSync } from "cbor";
 import fetchBuilder from "fetch-retry";
+import semver from "semver";
 import * as uuid from "uuid";
 import WebSocket from "ws";
 import logger, { sessionContextLogger } from "./logger";
 import {
+  CancelExecutionEvent,
   ConnectionOptions,
   ConnectionOptionsNormalized,
   ConnectionOptionsSchemaNormalized,
@@ -18,6 +20,7 @@ import {
 } from "./schemas";
 import {
   backoffRetry,
+  combineAbortSignals,
   decodeResults,
   decompressPayload,
   isSessionInFinalState,
@@ -26,6 +29,7 @@ import {
 } from "./api-utils";
 import z from "zod";
 import { Table, TypeMap } from "apache-arrow";
+import { MIN_PROTOCOL_VERSION_FOR_CANCEL } from "./constants";
 
 // used to mock out the fetch and WebSocket APIs
 // in a unit testing environment
@@ -38,12 +42,17 @@ type ConnectionTestHarness = {
   WebSocket: {
     new (url: string, options?: WebSocket.ClientOptions): WebSocketApiSubset;
   };
+  protocolVersion?: string | undefined;
 };
 
 const API_URL =
   process.env["WHEROBOTS_API_URL"] || "https://api.cloud.wherobots.com";
 
 const PROTOCOL_VERSION = "1.0.0";
+
+type ExecuteOptions = {
+  signal?: AbortSignal;
+};
 
 export class Connection {
   public static async connect(
@@ -66,6 +75,7 @@ export class Connection {
   private fetchOptions: RequestInit;
   private WebSocket: ConnectionTestHarness["WebSocket"];
   private ws: WebSocketApiSubset | null = null;
+  private protocolVersion: string;
   private wsListeners: {
     name: keyof WebSocket.WebSocketEventMap;
     // for purposes of tracking and automatically cleaning up listeners,
@@ -73,7 +83,7 @@ export class Connection {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     listener: (e: any) => void | never;
   }[] = [];
-  private executionAbortController = new AbortController();
+  private sessionAbortController = new AbortController();
 
   constructor(options: ConnectionOptions, testHarness?: ConnectionTestHarness) {
     this.options = ConnectionOptionsSchemaNormalized.parse({
@@ -91,7 +101,7 @@ export class Connection {
         "X-API-Key": this.options.apiKey,
         "Cache-Control": "no-store",
       },
-      signal: this.executionAbortController.signal,
+      signal: this.sessionAbortController.signal,
       // the types we're using don't recognize the `cache` option
       // even though it is a valid option for the fetch API
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -100,6 +110,7 @@ export class Connection {
     };
     this.fetch = fetchBuilder(testHarness?.fetch || fetch);
     this.WebSocket = testHarness?.WebSocket || WebSocket;
+    this.protocolVersion = testHarness?.protocolVersion || PROTOCOL_VERSION;
     const { apiKey, ...optionsToLog } = this.options;
     logger.child(optionsToLog).debug("Creating connection");
   }
@@ -142,7 +153,7 @@ export class Connection {
   }
 
   private async connectToWebSocket(wsUrl: string) {
-    const urlWithProtocol = `${wsUrl}/${PROTOCOL_VERSION}`;
+    const urlWithProtocol = `${wsUrl}/${this.protocolVersion}`;
     logger
       .child({ wsUrl: urlWithProtocol })
       .debug("Opening WebSocket connection");
@@ -155,7 +166,7 @@ export class Connection {
 
     await new Promise((resolve, reject) => {
       this.addWsListener("open", resolve, { once: true });
-      this.executionAbortController.signal.addEventListener("abort", () =>
+      this.sessionAbortController.signal.addEventListener("abort", () =>
         reject(new Error("Connection aborted")),
       );
     });
@@ -166,14 +177,20 @@ export class Connection {
 
   public async execute<Schema extends TypeMap = TypeMap>(
     statement: string,
+    options: ExecuteOptions = {},
   ): Promise<Table<Schema>> {
     if (!this.ws) {
       throw new Error("WebSocket is not open");
     }
     const executionId = uuid.v4();
+    const executionAbortSignal = combineAbortSignals(
+      this.sessionAbortController.signal,
+      options.signal,
+    );
     const executionSuccessPromise = this.waitForMessage(
       executionId,
       StateUpdatedEventSchema,
+      executionAbortSignal,
     );
     const executeEvent: ExecuteSQLEvent = {
       kind: "execute_sql",
@@ -189,6 +206,7 @@ export class Connection {
     const resultsPromise = this.waitForMessage(
       executionId,
       ExecutionResultEventSchema,
+      executionAbortSignal,
     );
     const retrieveEvent: RetrieveResultsEvent = {
       kind: "retrieve_results",
@@ -212,12 +230,26 @@ export class Connection {
   private async waitForMessage<T extends typeof EventWithExecutionIdSchema>(
     executionId: string,
     schema: T,
+    abortSignal: AbortSignal,
   ): Promise<z.infer<T>> {
     return new Promise<z.infer<T>>((resolve, reject) => {
-      this.executionAbortController.signal.addEventListener("abort", () =>
-        reject(new Error("Execution aborted")),
-      );
-      if (this.executionAbortController.signal.aborted) {
+      const sendCancellation = () => {
+        if (semver.gte(this.protocolVersion, MIN_PROTOCOL_VERSION_FOR_CANCEL)) {
+          logger.child({ executionId }).debug("Sending cancel event");
+          const cancelEvent: CancelExecutionEvent = {
+            kind: "cancel",
+            execution_id: executionId,
+          };
+          this.ws?.send(JSON.stringify(cancelEvent));
+        }
+      };
+      abortSignal.addEventListener("abort", () => {
+        sendCancellation();
+        cleanup();
+        reject(new Error("Execution aborted"));
+      });
+      if (abortSignal.aborted) {
+        sendCancellation();
         reject(new Error("Execution aborted"));
         return;
       }
@@ -285,7 +317,7 @@ export class Connection {
 
   public close(): void {
     logger.debug("Closing connection");
-    this.executionAbortController.abort();
+    this.sessionAbortController.abort();
     if (this.ws) {
       this.wsListeners.forEach((l) =>
         this.ws?.removeEventListener(l.name, l.listener),
