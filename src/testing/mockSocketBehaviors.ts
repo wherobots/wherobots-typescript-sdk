@@ -152,6 +152,38 @@ export const simulateImmediatelyOpenSocket = (mockWebSocket: MockWebSocket) => {
   });
 };
 
+export const simulateSocketWithTransitentConnectionErrors = (
+  mockWebSocket: MockWebSocket,
+  options: { numInitialFailures: number },
+) => {
+  Array.from(Array(options.numInitialFailures)).forEach(() => {
+    mockWebSocket.mockImplementationOnce(() => {
+      const instance = mockWebSocketDefaultImplementation();
+      setTimeout(() =>
+        simulateWebSocketEvent(instance, {
+          type: "error",
+        } as WebSocket.Event),
+      );
+      return instance;
+    });
+  });
+  simulateImmediatelyOpenSocket(mockWebSocket);
+};
+
+export const simulateSocketWithConnectionTimeout = (
+  mockWebSocket: MockWebSocket,
+  options: { numTimeouts: number },
+) => {
+  Array.from(Array(options.numTimeouts)).forEach(() => {
+    // simulate a connection timeout by never sending an open event
+    mockWebSocket.mockImplementationOnce(() => {
+      const instance = mockWebSocketDefaultImplementation();
+      return instance;
+    });
+  });
+  simulateImmediatelyOpenSocket(mockWebSocket);
+};
+
 export const simulateSocketWithSingleExecution = (
   mockWebSocket: MockWebSocket,
 ) => {

@@ -51,6 +51,77 @@ export const backoffRetry = (attempts: number) => {
   return jitter(5000);
 };
 
+type RetryOptions<T> = {
+  timeout: number;
+  retryOn: (
+    attempts: number,
+    error: Error | null,
+    result: T | null,
+  ) => boolean | Promise<boolean>;
+  retryDelay: (attempts: number) => number;
+};
+
+/*
+ * helper function to perform an async operation where the caller can
+ * specify the retry and timeout semantics via an options API.
+ *
+ * in order for timeouts to be handled correctly, the contract with the caller is
+ * that the operation function must take an abort signal as an argument and
+ * must respect the signal by aborting the operation when the signal is aborted.
+ *
+ * in the case of a timeout, the `retryOn` function will be called with an error
+ * with the name "TimeoutError", which can be used to define how timeouts are retried.
+ */
+export const asyncOperationWithRetry = async <T>(
+  operation: (signal: AbortSignal) => Promise<T>,
+  options: RetryOptions<T>,
+): Promise<T> => {
+  const performAttempt = async (): Promise<[Error | null, T | null]> => {
+    try {
+      const timeoutSignal = AbortSignal.timeout(options.timeout);
+      const r = await operation(timeoutSignal);
+      return [null, r];
+    } catch (e) {
+      return [e as Error, null];
+    }
+  };
+  let attempts = 0;
+  let [error, result] = await performAttempt();
+  while (await options.retryOn(attempts, error, result)) {
+    const delay = options.retryDelay(attempts);
+    await new Promise((resolve) => setTimeout(resolve, delay));
+    attempts += 1;
+    [error, result] = await performAttempt();
+  }
+  if (error) {
+    return Promise.reject(error);
+  }
+  return Promise.resolve(result as T);
+};
+
+export const RETRYABLE_HTTP_STATUS_CODES = [502, 503];
+export const NUM_RESLIENCY_RETRIES = 3;
+export const shouldRetryForResiliency = (
+  attempt: number,
+  error: Error | null,
+  result: { status: number } | null,
+) => {
+  if (attempt >= NUM_RESLIENCY_RETRIES) {
+    return false;
+  }
+  if (result && RETRYABLE_HTTP_STATUS_CODES.includes(result.status)) {
+    logger
+      .child({ status: result.status, attempt })
+      .debug("Retrying due to HTTP status");
+    return true;
+  }
+  if (error && error.name === "TimeoutError") {
+    logger.child({ attempt }).debug("Retrying due to timeout");
+    return true;
+  }
+  return false;
+};
+
 export const toWsUrl = (url: string) => {
   if (url.startsWith("https:")) {
     return url.replace("https:", "wss:");
@@ -95,7 +166,7 @@ export const decodeResults = <Schema extends TypeMap>(
 
 // we can use AbortSignal.any() once we don't support Node 18
 export const combineAbortSignals = (
-  ...signals: (AbortSignal | undefined)[]
+  ...signals: (AbortSignal | null | undefined)[]
 ): AbortSignal => {
   const controller = new AbortController();
   signals.forEach((signal) => {

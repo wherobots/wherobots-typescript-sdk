@@ -1,3 +1,4 @@
+import { RETRYABLE_HTTP_STATUS_CODES } from "@/api-utils";
 import { SessionStatus } from "@/constants";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
@@ -39,6 +40,37 @@ export const simulateSessionCreateUnauthenticated = (fetchMock: FetchMock) => {
   fetchMock.mockResponse("Not authorized", { status: 401 });
 };
 
+export const simulateSessionCreateTransientNetworkError = (
+  fetchMock: FetchMock,
+  options: { numInitialFailures: number },
+) => {
+  Array.from(Array(options.numInitialFailures)).forEach(() => {
+    fetchMock.mockResponseOnce("Service Unavailable", {
+      status: RETRYABLE_HTTP_STATUS_CODES[0]!,
+    });
+  });
+  fetchMock.mockResponse(createMockSessionPayload(SessionStatus.READY));
+};
+
+export const simulateSessionCreateTimeout = (
+  fetchMock: FetchMock,
+  options: { numTimeouts: number },
+) => {
+  Array.from(Array(options.numTimeouts)).forEach(() => {
+    // this is as close as we can get to simulating a timeout,
+    // because we are replacing the fetch implementation and so the
+    // abort signal we pass in is not actually used
+    fetchMock.mockResponseOnce(() =>
+      Promise.reject(
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        new global.DOMException("The operation timed out.", "TimeoutError"),
+      ),
+    );
+  });
+  fetchMock.mockResponse(createMockSessionPayload(SessionStatus.READY));
+};
+
 const INVALID_SESSION_PAYLOAD = createMockSessionPayload(
   "invalid" as unknown as SessionStatus,
 );
@@ -69,4 +101,17 @@ export const simulateSessionPollInvalidResponse = (
     ),
     INVALID_SESSION_PAYLOAD,
   );
+};
+
+export const simulateSessionPollTransientNetworkError = (
+  fetchMock: FetchMock,
+  options: { numFailures: number },
+) => {
+  fetchMock.mockResponses(...SESSION_LIFECYCLE_RESPONSES.slice(-1));
+  Array.from(Array(options.numFailures)).forEach(() => {
+    fetchMock.mockResponseOnce("Service Unavailable", {
+      status: RETRYABLE_HTTP_STATUS_CODES[0]!,
+    });
+  });
+  fetchMock.mockResponse(createMockSessionPayload(SessionStatus.READY));
 };
