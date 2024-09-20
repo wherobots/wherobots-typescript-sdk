@@ -1,5 +1,4 @@
 import { decodeFirstSync } from "cbor";
-import fetchBuilder from "fetch-retry";
 import semver from "semver";
 import * as uuid from "uuid";
 import WebSocket from "ws";
@@ -19,12 +18,15 @@ import {
   StateUpdatedEventSchema,
 } from "./schemas";
 import {
+  asyncOperationWithRetry,
   backoffRetry,
   combineAbortSignals,
   decodeResults,
   decompressPayload,
   isSessionInFinalState,
+  NUM_RESLIENCY_RETRIES,
   parseResponse,
+  shouldRetryForResiliency,
   toWsUrl,
 } from "./api-utils";
 import z from "zod";
@@ -50,6 +52,8 @@ const API_URL =
 
 const PROTOCOL_VERSION = "1.0.0";
 
+const API_REQUEST_TIMEOUT = 10e3;
+
 type ExecuteOptions = {
   signal?: AbortSignal;
 };
@@ -71,7 +75,7 @@ export class Connection {
   }
 
   private options: ConnectionOptionsNormalized;
-  private fetch: ReturnType<typeof fetchBuilder<typeof fetch>>;
+  private fetch: typeof fetch;
   private fetchOptions: RequestInit;
   private WebSocket: ConnectionTestHarness["WebSocket"];
   private ws: WebSocketApiSubset | null = null;
@@ -108,7 +112,7 @@ export class Connection {
       // @ts-ignore
       cache: "no-store",
     };
-    this.fetch = fetchBuilder(testHarness?.fetch || fetch);
+    this.fetch = testHarness?.fetch || fetch;
     this.WebSocket = testHarness?.WebSocket || WebSocket;
     this.protocolVersion = testHarness?.protocolVersion || PROTOCOL_VERSION;
     const { apiKey, ...optionsToLog } = this.options;
@@ -116,24 +120,44 @@ export class Connection {
   }
 
   private async establishSession() {
-    const createdSession = await this.fetch(
-      `${API_URL}/sql/session?region=${encodeURIComponent(this.options.region)}`,
+    const createdSession = await asyncOperationWithRetry(
+      (signal) =>
+        this.fetch(
+          `${API_URL}/sql/session?region=${encodeURIComponent(this.options.region)}`,
+          {
+            method: "POST",
+            body: JSON.stringify({
+              runtimeId: this.options.runtime,
+            }),
+            ...this.fetchOptions,
+            signal: combineAbortSignals(signal, this.fetchOptions.signal),
+          },
+        ),
       {
-        method: "POST",
-        body: JSON.stringify({
-          runtimeId: this.options.runtime,
-        }),
-        ...this.fetchOptions,
+        retryOn: shouldRetryForResiliency,
+        retryDelay: backoffRetry,
+        timeout: API_REQUEST_TIMEOUT,
       },
     ).then((res) => parseResponse(res, SessionResponseSchema));
     sessionContextLogger(createdSession).debug("Session created");
 
-    const establishedSession = await this.fetch(
-      `${API_URL}/sql/session/${createdSession.id}`,
+    // a custom counter that is only incremented when a request is retried
+    // due to an error, as opposed to a successful request that is retried
+    // because the session is not ready yet
+    let numFailedAttempts = 0;
+    const establishedSession = await asyncOperationWithRetry(
+      (signal) =>
+        this.fetch(`${API_URL}/sql/session/${createdSession.id}`, {
+          ...this.fetchOptions,
+          signal: combineAbortSignals(signal, this.fetchOptions.signal),
+        }),
       {
-        ...this.fetchOptions,
         retryDelay: backoffRetry,
         retryOn: async (_, error, res) => {
+          if (shouldRetryForResiliency(numFailedAttempts, error, res)) {
+            numFailedAttempts++;
+            return true;
+          }
           if (!error && res) {
             const session = await parseResponse(res, SessionResponseSchema);
             sessionContextLogger(session).debug("Checked session state");
@@ -141,6 +165,7 @@ export class Connection {
           }
           return false;
         },
+        timeout: API_REQUEST_TIMEOUT,
       },
     ).then((res) => parseResponse(res, ReadySessionResponseSchema));
 
@@ -157,22 +182,73 @@ export class Connection {
     logger
       .child({ wsUrl: urlWithProtocol })
       .debug("Opening WebSocket connection");
-    this.ws = new this.WebSocket(urlWithProtocol, {
-      headers: { "X-API-Key": this.options.apiKey },
-      perMessageDeflate: false,
-    });
+
+    this.ws = await asyncOperationWithRetry(
+      (signal) =>
+        this.openWebSocket(
+          urlWithProtocol,
+          combineAbortSignals(signal, this.sessionAbortController.signal),
+        ),
+      {
+        retryOn: (attempt, error) => {
+          if (error && attempt < NUM_RESLIENCY_RETRIES) {
+            logger
+              .child({ attempt, error: error.message })
+              .warn("Retrying WebSocket connection");
+            return true;
+          }
+          return false;
+        },
+        retryDelay: backoffRetry,
+        timeout: API_REQUEST_TIMEOUT,
+      },
+    );
     this.addWsListener("error", this.onWsError);
     this.addWsListener("close", this.onWsClose);
 
-    await new Promise((resolve, reject) => {
-      this.addWsListener("open", resolve, { once: true });
-      this.sessionAbortController.signal.addEventListener("abort", () =>
-        reject(new Error("Connection aborted")),
-      );
-    });
     logger
       .child({ wsUrl: urlWithProtocol })
       .debug("WebSocket connection is open");
+  }
+
+  // helper method to attempt to open a WebSocket connection,
+  // returning a Promise that either resolves to a WebSocket instance
+  // if the connection is opened succesfully, or rejects if the connection
+  // fails, is closed remotely, or is aborted due to a timeout
+  private openWebSocket(
+    url: string,
+    signal: AbortSignal,
+  ): Promise<WebSocketApiSubset> {
+    return new Promise((resolve, reject) => {
+      signal.addEventListener("abort", (e) => {
+        reject(new Error(e.type));
+        cleanup(true);
+      });
+      signal.throwIfAborted();
+      const onSocketOpen = () => {
+        cleanup();
+        resolve(ws);
+      };
+      const onSocketFail = (e: WebSocket.ErrorEvent | WebSocket.CloseEvent) => {
+        cleanup(true);
+        reject(new Error(e.type));
+      };
+      const cleanup = (close?: boolean) => {
+        ws.removeEventListener("open", onSocketOpen);
+        ws.removeEventListener("error", onSocketFail);
+        ws.removeEventListener("close", onSocketFail);
+        if (close) {
+          ws.close();
+        }
+      };
+      const ws = new this.WebSocket(url, {
+        headers: { "X-API-Key": this.options.apiKey },
+        perMessageDeflate: false,
+      });
+      ws.addEventListener("open", onSocketOpen, { once: true });
+      ws.addEventListener("error", onSocketFail, { once: true });
+      ws.addEventListener("close", onSocketFail, { once: true });
+    });
   }
 
   public async execute<Schema extends TypeMap = TypeMap>(

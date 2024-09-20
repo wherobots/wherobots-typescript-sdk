@@ -10,9 +10,12 @@ import {
   SESSION_LIFECYCLE_RESPONSES,
   simulateImmediatelyReadySession,
   simulateSessionCreateInvalidResponse,
+  simulateSessionCreateTimeout,
+  simulateSessionCreateTransientNetworkError,
   simulateSessionCreateUnauthenticated,
   simulateSessionCreationLifecycle,
   simulateSessionPollInvalidResponse,
+  simulateSessionPollTransientNetworkError,
   simulateSessionServiceError,
 } from "./testing/mockSessionBehaviors";
 import {
@@ -23,13 +26,33 @@ import {
   simulateImmediatelyOpenSocket,
   simulateSocketWithConnectionClosed,
   simulateSocketWithConnectionError,
+  simulateSocketWithConnectionTimeout,
   simulateSocketWithMultipleExecutions,
   simulateSocketWithMultipleExecutionsOneError,
   simulateSocketWithSingleExecution,
   simulateSocketWithSingleExecutionError,
   simulateSocketWithSingleExecutionPaused,
+  simulateSocketWithTransitentConnectionErrors,
   wasSocketClosed,
 } from "./testing/mockSocketBehaviors";
+import { NUM_RESLIENCY_RETRIES } from "./api-utils";
+
+// unfortunately, AbortController.timeout functionality can't be mocked using
+// vitest fake timers, so we have to replace it with an equivalent implementation
+// that uses setTimeout
+global.AbortSignal.timeout = (delay: number) => {
+  const controller = new AbortController();
+  setTimeout(
+    () =>
+      controller.abort(
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        new global.DOMException("The operation timed out.", "TimeoutError"),
+      ),
+    delay,
+  );
+  return controller.signal;
+};
 
 const showSchemasExpectedPayload = JSON.parse(
   readFileSync(resolve(__dirname, "./testing/payloads/showSchemas.json"), {
@@ -159,6 +182,46 @@ describe("Connection.connect, when establishing SQL session", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  test("retries if session create fails with a networ error", async () => {
+    simulateSessionCreateTransientNetworkError(fetchMock, {
+      numInitialFailures: NUM_RESLIENCY_RETRIES,
+    });
+    simulateImmediatelyOpenSocket(MockWebSocket);
+    const connection = createConnectionUnderTest();
+    vi.runAllTimersAsync();
+    await expect(connection).resolves.toBeInstanceOf(Connection);
+  });
+
+  test("stops retrying if session create consistently fails with a networ error", async () => {
+    simulateSessionCreateTransientNetworkError(fetchMock, {
+      numInitialFailures: NUM_RESLIENCY_RETRIES + 1,
+    });
+    simulateImmediatelyOpenSocket(MockWebSocket);
+    const connection = createConnectionUnderTest();
+    vi.runAllTimersAsync();
+    await expect(connection).rejects.toBeInstanceOf(Error);
+  });
+
+  test("retries if session create times out", async () => {
+    simulateSessionCreateTimeout(fetchMock, {
+      numTimeouts: NUM_RESLIENCY_RETRIES,
+    });
+    simulateImmediatelyOpenSocket(MockWebSocket);
+    const connection = createConnectionUnderTest();
+    vi.runAllTimersAsync();
+    await expect(connection).resolves.toBeInstanceOf(Connection);
+  });
+
+  test("stops retrying if session create times out consistently", async () => {
+    simulateSessionCreateTimeout(fetchMock, {
+      numTimeouts: NUM_RESLIENCY_RETRIES + 1,
+    });
+    simulateImmediatelyOpenSocket(MockWebSocket);
+    const connection = createConnectionUnderTest();
+    vi.runAllTimersAsync();
+    await expect(connection).rejects.toBeInstanceOf(Error);
+  });
+
   test("rejects if session server returns error while polling", async () => {
     simulateSessionServiceError(fetchMock, { numInitialSuccesses: 2 });
     simulateImmediatelyOpenSocket(MockWebSocket);
@@ -167,12 +230,32 @@ describe("Connection.connect, when establishing SQL session", () => {
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
-  test("rejects if session server returns error while polling", async () => {
+  test("rejects if session server returns invalid response while polling", async () => {
     simulateSessionPollInvalidResponse(fetchMock, { numInitialSuccesses: 2 });
     simulateImmediatelyOpenSocket(MockWebSocket);
     const connection = createConnectionUnderTest();
     await expect(connection).rejects.toBeInstanceOf(Error);
     expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  test("retries if session polling fails with network error", async () => {
+    simulateSessionPollTransientNetworkError(fetchMock, {
+      numFailures: NUM_RESLIENCY_RETRIES,
+    });
+    simulateImmediatelyOpenSocket(MockWebSocket);
+    const connection = createConnectionUnderTest();
+    vi.runAllTimersAsync();
+    await expect(connection).resolves.toBeInstanceOf(Connection);
+  });
+
+  test("stops retrying if session polling consistently fails with network error", async () => {
+    simulateSessionPollTransientNetworkError(fetchMock, {
+      numFailures: NUM_RESLIENCY_RETRIES + 1,
+    });
+    simulateImmediatelyOpenSocket(MockWebSocket);
+    const connection = createConnectionUnderTest();
+    vi.runAllTimersAsync();
+    await expect(connection).rejects.toBeInstanceOf(Error);
   });
 
   test("removes all socket listeners when connection is closed", async () => {
@@ -182,6 +265,46 @@ describe("Connection.connect, when establishing SQL session", () => {
     vi.runAllTimersAsync();
     (await connection).close();
     expectAllSocketListenersRemoved(MockWebSocket);
+  });
+
+  test("retries if websocket connection fails", async () => {
+    simulateImmediatelyReadySession(fetchMock);
+    simulateSocketWithTransitentConnectionErrors(MockWebSocket, {
+      numInitialFailures: NUM_RESLIENCY_RETRIES,
+    });
+    const connection = createConnectionUnderTest();
+    vi.runAllTimersAsync();
+    await expect(connection).resolves.toBeInstanceOf(Connection);
+  });
+
+  test("stops retrying if websocket connection fails consistently", async () => {
+    simulateImmediatelyReadySession(fetchMock);
+    simulateSocketWithTransitentConnectionErrors(MockWebSocket, {
+      numInitialFailures: NUM_RESLIENCY_RETRIES + 1,
+    });
+    const connection = createConnectionUnderTest();
+    vi.runAllTimersAsync();
+    await expect(connection).rejects.toBeInstanceOf(Error);
+  });
+
+  test('retries if websocket connection times out"', async () => {
+    simulateImmediatelyReadySession(fetchMock);
+    simulateSocketWithConnectionTimeout(MockWebSocket, {
+      numTimeouts: NUM_RESLIENCY_RETRIES,
+    });
+    const connection = createConnectionUnderTest();
+    vi.runAllTimersAsync();
+    await expect(connection).resolves.toBeInstanceOf(Connection);
+  });
+
+  test("stops retrying if websocket connection times out consistently", async () => {
+    simulateImmediatelyReadySession(fetchMock);
+    simulateSocketWithConnectionTimeout(MockWebSocket, {
+      numTimeouts: NUM_RESLIENCY_RETRIES + 1,
+    });
+    const connection = createConnectionUnderTest();
+    vi.runAllTimersAsync();
+    await expect(connection).rejects.toBeInstanceOf(Error);
   });
 });
 
