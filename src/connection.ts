@@ -32,6 +32,10 @@ import {
 import z from "zod";
 import { Table, TypeMap } from "apache-arrow";
 import { MIN_PROTOCOL_VERSION_FOR_CANCEL } from "./constants";
+import {
+  version as packageVersion,
+  name as packageName,
+} from "../package.json";
 
 // used to mock out the fetch and WebSocket APIs
 // in a unit testing environment
@@ -51,6 +55,9 @@ const API_URL =
   process.env["WHEROBOTS_API_URL"] || "https://api.cloud.wherobots.com";
 
 const PROTOCOL_VERSION = "1.0.0";
+const OS_TYPE = `${process.platform};${process.arch}`;
+const NODE_VERSION = process.version;
+const USER_AGENT = `${packageName}/${packageVersion} os/${OS_TYPE} node/${NODE_VERSION}"`;
 
 const API_REQUEST_TIMEOUT = 10e3;
 
@@ -104,6 +111,7 @@ export class Connection {
         "Content-Type": "application/json",
         "X-API-Key": this.options.apiKey,
         "Cache-Control": "no-store",
+        "User-Agent": USER_AGENT,
       },
       signal: this.sessionAbortController.signal,
       // the types we're using don't recognize the `cache` option
