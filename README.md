@@ -74,19 +74,15 @@ Running this example returns the results of the query as JSON:
    to the console as formatted JSON with `JSON.stringify()`.
 1. Calling the connection's `close()` method tears down the SQL Session connection.
 
-<details>
-  <summary>Running the example - JavaScript</summary>
+##### Running the example - JavaScript
 
 1. Paste the contents of the above code example into a file called `wherobots-example.js`
 1. Run the example with: `node wherobots-example.js`
-</details>
 
-<details>
-  <summary>Running the example - TypeScript</summary>
+##### Running the example - TypeScript
 
 1. Paste the contents of the above code example into a file called `wherobots-example.ts`
 1. Run the example with: `npx tsx wherobots-example.ts`
-</details>
 
 ### Runtime and region selection
 

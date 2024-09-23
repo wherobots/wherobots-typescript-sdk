@@ -71,6 +71,9 @@ export class Connection {
     testHarness?: ConnectionTestHarness,
   ) {
     const connection = new Connection(options, testHarness);
+    logger.info(
+      "Initializing SQL session. Please wait, this process may take a few moments...",
+    );
     await connection.establishSession();
     return connection;
   }
