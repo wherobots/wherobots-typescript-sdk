@@ -48,7 +48,7 @@ type ConnectionTestHarness = {
   protocolVersion?: string | undefined;
 };
 
-const { packageJson } = readPackageUp.sync() || {};
+const { packageJson } = readPackageUp.sync({ cwd: __dirname }) || {};
 const API_URL =
   process.env["WHEROBOTS_API_URL"] || "https://api.cloud.wherobots.com";
 
@@ -132,7 +132,7 @@ export class Connection {
     const createdSession = await asyncOperationWithRetry(
       (signal) =>
         this.fetch(
-          `${API_URL}/sql/session?region=${encodeURIComponent(this.options.region)}`,
+          `${API_URL}/sql/session?region=${encodeURIComponent(this.options.region)}&reuse_session=true`,
           {
             method: "POST",
             body: JSON.stringify({
