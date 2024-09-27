@@ -3,9 +3,6 @@
 TypeScript SDK for interacting with WherobotsDB. This package implements a Node.js
 client that programmatically connects to a WherobotsDB runtime and execute Spatial SQL queries.
 
-:warning: WARNING: This package is currently in Alpha. It is not recommended for use in production.
-API interfaces are subject to change.
-
 ## Prerequisites
 
 1. Node.js version 18 or higher
