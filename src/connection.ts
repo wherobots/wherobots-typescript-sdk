@@ -229,10 +229,11 @@ export class Connection {
     signal: AbortSignal,
   ): Promise<WebSocketApiSubset> {
     return new Promise((resolve, reject) => {
-      signal.addEventListener("abort", (e) => {
+      const onAbort = (e: Event) => {
         reject(new Error(e.type));
         cleanup(true);
-      });
+      };
+      signal.addEventListener("abort", onAbort);
       signal.throwIfAborted();
       const onSocketOpen = () => {
         cleanup();
@@ -243,6 +244,7 @@ export class Connection {
         reject(new Error(e.type));
       };
       const cleanup = (close?: boolean) => {
+        signal.removeEventListener("abort", onAbort);
         ws.removeEventListener("open", onSocketOpen);
         ws.removeEventListener("error", onSocketFail);
         ws.removeEventListener("close", onSocketFail);

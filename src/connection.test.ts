@@ -164,6 +164,7 @@ describe("Connection.connect, when establishing SQL session", () => {
     vi.runAllTimersAsync();
     await expect(connection).resolves.toBeInstanceOf(Connection);
     expect(fetchMock).toHaveBeenCalledTimes(SESSION_LIFECYCLE_RESPONSES.length);
+    expect(wasSocketClosed(MockWebSocket)).toEqual(false);
   });
 
   test("rejects if session create fails", async () => {
