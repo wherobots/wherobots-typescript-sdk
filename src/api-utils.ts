@@ -175,7 +175,11 @@ export const combineAbortSignals = (
         controller.abort(signal.reason);
         return;
       }
-      signal.addEventListener("abort", () => controller.abort(signal.reason));
+      const onSignalAbort = () => controller.abort(signal.reason);
+      signal.addEventListener("abort", onSignalAbort);
+      controller.signal.addEventListener("abort", () =>
+        signal.removeEventListener("abort", onSignalAbort),
+      );
     }
   });
   return controller.signal;

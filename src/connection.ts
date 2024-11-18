@@ -1,5 +1,4 @@
 import { decodeFirstSync } from "cbor";
-import semver from "semver";
 import * as uuid from "uuid";
 import WebSocket from "ws";
 import logger, { sessionContextLogger } from "./logger";
@@ -32,7 +31,6 @@ import {
 import z from "zod";
 import { Table, TypeMap } from "apache-arrow";
 import readPackageUp from "read-pkg-up";
-import { MIN_PROTOCOL_VERSION_FOR_CANCEL } from "./constants";
 
 // used to mock out the fetch and WebSocket APIs
 // in a unit testing environment
@@ -321,20 +319,19 @@ export class Connection {
   ): Promise<z.infer<T>> {
     return new Promise<z.infer<T>>((resolve, reject) => {
       const sendCancellation = () => {
-        if (semver.gte(this.protocolVersion, MIN_PROTOCOL_VERSION_FOR_CANCEL)) {
-          logger.child({ executionId }).debug("Sending cancel event");
-          const cancelEvent: CancelExecutionEvent = {
-            kind: "cancel",
-            execution_id: executionId,
-          };
-          this.ws?.send(JSON.stringify(cancelEvent));
-        }
+        logger.child({ executionId }).debug("Sending cancel event");
+        const cancelEvent: CancelExecutionEvent = {
+          kind: "cancel",
+          execution_id: executionId,
+        };
+        this.ws?.send(JSON.stringify(cancelEvent));
       };
-      abortSignal.addEventListener("abort", () => {
+      const handleSignalAborted = () => {
         sendCancellation();
         cleanup();
         reject(new Error("Execution aborted"));
-      });
+      };
+      abortSignal.addEventListener("abort", handleSignalAborted);
       if (abortSignal.aborted) {
         sendCancellation();
         reject(new Error("Execution aborted"));
@@ -349,6 +346,7 @@ export class Connection {
             if (isError) {
               logger.child(errorEvent).error("Error event received");
               cleanup();
+              abortSignal.removeEventListener("abort", handleSignalAborted);
               reject(new Error("Error event received"));
             }
           }
@@ -363,6 +361,7 @@ export class Connection {
           const data = schema.parse(toParse);
           if (data["execution_id"] === executionId) {
             cleanup();
+            abortSignal.removeEventListener("abort", handleSignalAborted);
             resolve(data);
           }
         } catch (err) {
