@@ -5,7 +5,7 @@ import { expect, test, describe, vi, beforeEach } from "vitest";
 // @ts-ignore
 import fetchMockBuilder from "vitest-fetch-mock";
 import { Connection } from "./connection";
-import { MIN_PROTOCOL_VERSION_FOR_CANCEL, Runtime } from "./constants";
+import { Runtime } from "./constants";
 import {
   SESSION_LIFECYCLE_RESPONSES,
   simulateImmediatelyReadySession,
@@ -85,13 +85,13 @@ const expectCorrectApiKey = () => {
   );
 };
 
-const createConnectionUnderTest = (protocolVersion?: string) =>
+const createConnectionUnderTest = () =>
   Connection.connect(
     {
       apiKey: testApiKey,
       runtime: Runtime.SEDONA,
     },
-    { ...testHarness, protocolVersion },
+    { ...testHarness },
   );
 
 beforeEach(() => {
@@ -111,6 +111,11 @@ describe("Connection.connect, when passed connection options", () => {
   });
 
   test("rejects if API key is missing", async () => {
+    if (process.env["WHEROBOTS_API_KEY"]) {
+      throw new Error(
+        "this test is invalid if WHEROBOTS_API_KEY environment variable is set",
+      );
+    }
     const connection = Connection.connect(
       {
         runtime: Runtime.SEDONA,
@@ -377,38 +382,10 @@ describe("Connection#execute, when executing a single SQL statement", async () =
     expectAllSocketListenersRemoved(MockWebSocket);
   });
 
-  test("stops listening/sending if execution is aborted", async () => {
+  test("sends cancellation if execution is aborted", async () => {
     simulateImmediatelyReadySession(fetchMock);
     const { resume } = simulateSocketWithSingleExecutionPaused(MockWebSocket);
     const connection = createConnectionUnderTest();
-    vi.runAllTimersAsync();
-    const abortController = new AbortController();
-    const result = (await connection).execute(
-      "SHOW SCHEMAS IN wherobots_open_data",
-      { signal: abortController.signal },
-    );
-    vi.runAllTimersAsync();
-    expect(getSentMessages(MockWebSocket)).toEqual([
-      expect.objectContaining({ kind: "execute_sql" }),
-    ]);
-    // aborting the execution before resuming the simulated socket should cause the promise to reject
-    // and no additional messages to be sent for this execution
-    abortController.abort();
-    resume();
-    vi.runAllTimersAsync();
-    await expect(result).rejects.toBeInstanceOf(Error);
-    expect(getSentMessages(MockWebSocket)).toEqual([
-      expect.objectContaining({ kind: "execute_sql" }),
-    ]);
-    expect(wasSocketClosed(MockWebSocket)).toEqual(false);
-  });
-
-  test("sends cancellation if execution is aborted for protocol version >= 1.1.0", async () => {
-    simulateImmediatelyReadySession(fetchMock);
-    const { resume } = simulateSocketWithSingleExecutionPaused(MockWebSocket);
-    const connection = createConnectionUnderTest(
-      MIN_PROTOCOL_VERSION_FOR_CANCEL,
-    );
     vi.runAllTimersAsync();
     const abortController = new AbortController();
     const result = (await connection).execute(
