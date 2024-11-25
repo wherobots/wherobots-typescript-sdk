@@ -89,7 +89,7 @@ const createConnectionUnderTest = () =>
   Connection.connect(
     {
       apiKey: testApiKey,
-      runtime: Runtime.SEDONA,
+      runtime: Runtime.TINY,
     },
     { ...testHarness },
   );
@@ -118,7 +118,7 @@ describe("Connection.connect, when passed connection options", () => {
     }
     const connection = Connection.connect(
       {
-        runtime: Runtime.SEDONA,
+        runtime: Runtime.TINY,
       },
       testHarness,
     );
@@ -135,7 +135,7 @@ describe("Connection.connect, when passed connection options", () => {
     try {
       const connection = Connection.connect(
         {
-          runtime: Runtime.SEDONA,
+          runtime: Runtime.TINY,
         },
         testHarness,
       );
