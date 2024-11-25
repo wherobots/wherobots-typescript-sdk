@@ -13,7 +13,7 @@ import { Utf8 } from "apache-arrow";
 
 (async () => {
   const conn = await Connection.connect({
-    runtime: Runtime.SEDONA,
+    runtime: Runtime.TINY,
   });
   await new Promise((resolve) => setTimeout(resolve, 15 * 1000));
   const results = await conn.execute<{ namespace: Utf8 }>(

@@ -1,9 +1,13 @@
 # Wherobots TypeScript SDK
 
-TypeScript SDK for interacting with WherobotsDB. This package implements a Node.js
-client that programmatically connects to a WherobotsDB runtime and execute Spatial SQL queries.
+<!-- Note to authors: This content is duplicated from https://github.com/wherobots/documents/blob/source/docs/develop/spatial-sql-api.md#wherobots-sql-driver-typescript-sdk. When making updates here, please mirror them to the other location. -->
+
+This is the TypeScript SDK for interacting with WherobotsDB. This package implements a Node.js
+client that programmatically connects to a WherobotsDB runtime and executes Spatial SQL queries.
 
 ## Prerequisites
+
+The following resources are needed to run the Wherobots SQL Driver's TypeScript SDK:
 
 1. Node.js version 18 or higher
 1. TypeScript version 5.x (if using TypeScript)
@@ -12,16 +16,20 @@ client that programmatically connects to a WherobotsDB runtime and execute Spati
 
 ## Installation
 
-```
-$ npm install wherobots-sql-driver
+To complete the installation, run the following command:
+
+```bash
+npm install wherobots-sql-driver
 ```
 
 ## Usage
 
 ### Example: Executing SQL statement and printing results
 
-This example follows the typical pattern of an `async` function to establish the connection to WherobotsDB.
-After establishing this connection, you can call `async` methods to execute SQL queries through this connection.
+This example:
+
+- Establishes the connection to WherobotsDB with an `async` function
+- Calls `async` methods to execute SQL queries through this connection.
 
 ```ts
 import { Connection, Runtime } from "wherobots-sql-driver";
@@ -41,7 +49,7 @@ import { Connection, Runtime } from "wherobots-sql-driver";
 
 Running this example returns the results of the query as JSON:
 
-```
+```json
 [
   {
     "namespace": "overture"
@@ -67,7 +75,7 @@ Running this example returns the results of the query as JSON:
    in Wherobots Cloud and returns a `Connection` instance.
 1. Calling the connection's `execute()` methods runs the given SQL statement and
    asynchronously returns the result as an [Apache Arrow Table](https://arrow.apache.org/docs/js/classes/Arrow_dom.Table.html) instance.
-1. The Arrow Table instance can be converted to a primitive by calling `toArray()`, and then printed
+1. The Arrow Table instance is converted to a primitive by calling `toArray()`, and then printed
    to the console as formatted JSON with `JSON.stringify()`.
 1. Calling the connection's `close()` method tears down the SQL Session connection.
 
@@ -83,10 +91,8 @@ Running this example returns the results of the query as JSON:
 
 ### Runtime and region selection
 
-You can chose the Wherobots runtime you want to use using the `runtime`
-parameter, passing in one of the `Runtime` enum values. For more
-information on runtime sizing and selection, please consult the
-[Wherobots product documentation](https://docs.wherobots.com).
+Select your desired Wherobots runtime using the runtime parameter and specifying a runtime enum value.
+See the [Wherobots product documentation](https://docs.wherobots.com) for guidance on runtime sizing and selection.
 
 ### Additional parameters to `connect()`
 
