@@ -98,6 +98,12 @@ See the [Wherobots product documentation](https://docs.wherobots.com) for guidan
 
 The `Connection.connect()` function can take the following additional options:
 
+- `sessionType`: "single" or "multi"; if set to "single", then each call
+  to `Connection.connect()` establishes an exclusive connection to a
+  Wherobots runtime; if set to "multi", then multiple `Connection.connect()`
+  calls with the same arguments and credentials will connect to a single,
+  shared Wherobots runtime; defaults to "single".
+
 - `resultsFormat`: one of the `ResultsFormat` enum values;
   Arrow encoding is the default and most efficient format for
   receiving query results.
