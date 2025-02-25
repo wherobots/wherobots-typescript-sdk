@@ -3,9 +3,9 @@ import { resolve } from "path";
 import { expect, test, describe, vi, beforeEach } from "vitest";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
-import fetchMockBuilder from "vitest-fetch-mock";
+import fetchMockBuilder, { FetchMock } from "vitest-fetch-mock";
 import { Connection } from "./connection";
-import { Runtime } from "./constants";
+import { Runtime, SessionType } from "./constants";
 import {
   SESSION_LIFECYCLE_RESPONSES,
   simulateImmediatelyReadySession,
@@ -85,6 +85,17 @@ const expectCorrectApiKey = () => {
   );
 };
 
+const expectMatchingSessionCreateBody = (
+  fetchMock: FetchMock,
+  expectedBody: unknown,
+) => {
+  const createCall = fetchMock.mock.calls.find(
+    (call) => call[1]?.method === "POST",
+  );
+  const body = JSON.parse(createCall?.[1]?.body as string);
+  expect(body).toEqual(expect.objectContaining(expectedBody));
+};
+
 const createConnectionUnderTest = () =>
   Connection.connect(
     {
@@ -158,6 +169,39 @@ describe("Connection.connect, when passed connection options", () => {
     vi.runAllTimersAsync();
     await expect(connection).rejects.toBeInstanceOf(Error);
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  test("defaults to 'single' session type", async () => {
+    simulateImmediatelyReadySession(fetchMock);
+    simulateImmediatelyOpenSocket(MockWebSocket);
+    Connection.connect(
+      {
+        apiKey: testApiKey,
+        runtime: Runtime.TINY,
+      },
+      testHarness,
+    );
+    vi.runAllTimersAsync();
+    expectMatchingSessionCreateBody(fetchMock, {
+      sessionType: "single",
+    });
+  });
+
+  test("can be set to 'multi' session type", async () => {
+    simulateImmediatelyReadySession(fetchMock);
+    simulateImmediatelyOpenSocket(MockWebSocket);
+    Connection.connect(
+      {
+        apiKey: testApiKey,
+        runtime: Runtime.TINY,
+        sessionType: SessionType.MULTI,
+      },
+      testHarness,
+    );
+    vi.runAllTimersAsync();
+    expectMatchingSessionCreateBody(fetchMock, {
+      sessionType: "multi",
+    });
   });
 });
 
