@@ -129,6 +129,12 @@ The `Connection.connect()` function can take the following additional options:
 - `region`: Currently, the only supported Wherobots compute region is `aws-us-west-2`,
   in AWS's Oregon (`us-west-2`) region.
 
+> [!WARNING]
+> To prepare for the expansion of Wherobots Cloud to new regions and cloud providers, the `region` parameter will become mandatory in a future SDK version.
+> Before this support for new regions is added, we will release an updated version of the SDK.
+> If you continue using an older SDK version, your existing connect requests will still work.
+> However, any new or existing SQL session you create without specifying the `region` parameter will be hosted in the `aws-us-west-2` region.
+
 ### Additional parameters to `execute()`
 
 The `Connection#execute` method can take an optional second argument, `options`:
