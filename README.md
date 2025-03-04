@@ -98,7 +98,7 @@ See the [Wherobots product documentation](https://docs.wherobots.com) for guidan
 
 The `Connection.connect()` function can take the following additional options:
 
-- `session_type`: `"single"` or `"multi"`; if set to `"single"`, then each call
+- `sessionType`: `"single"` or `"multi"`; if set to `"single"`, then each call
   to `Connection.connect()` establishes an exclusive connection to a
   Wherobots runtime; if set to "multi", then multiple `Connection.connect()`
   calls with the same arguments and credentials will connect to the same
