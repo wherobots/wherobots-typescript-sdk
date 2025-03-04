@@ -130,11 +130,12 @@ export class Connection {
     const createdSession = await asyncOperationWithRetry(
       (signal) =>
         this.fetch(
-          `${API_URL}/sql/session?region=${encodeURIComponent(this.options.region)}&reuse_session=true`,
+          `${API_URL}/sql/session?region=${encodeURIComponent(this.options.region)}`,
           {
             method: "POST",
             body: JSON.stringify({
               runtimeId: this.options.runtime,
+              sessionType: this.options.sessionType,
             }),
             ...this.fetchOptions,
             signal: combineAbortSignals(signal, this.fetchOptions.signal),

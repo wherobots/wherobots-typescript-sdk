@@ -6,6 +6,7 @@ import {
   ResultsFormat,
   Runtime,
   SessionStatus,
+  SessionType,
 } from "./constants";
 
 //////////////////////////////////////////////////////////////////////////
@@ -23,6 +24,7 @@ const ConnectionOptionsSchema = z.object({
   resultsFormat: z.literal(ResultsFormat.ARROW).optional(),
   dataCompression: z.literal(DataCompression.BROTLI).optional(),
   geometryRepresentation: z.nativeEnum(GeometryRepresentation).optional(),
+  sessionType: z.nativeEnum(SessionType).optional(),
 });
 
 export type ConnectionOptions = z.infer<typeof ConnectionOptionsSchema>;
@@ -43,6 +45,9 @@ export const ConnectionOptionsSchemaNormalized = ConnectionOptionsSchema.extend(
       ConnectionOptionsSchema.shape.geometryRepresentation.default(
         GeometryRepresentation.EWKT,
       ),
+    sessionType: ConnectionOptionsSchema.shape.sessionType.default(
+      SessionType.SINGLE,
+    ),
   },
 );
 

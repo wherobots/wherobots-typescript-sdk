@@ -39,6 +39,11 @@ export enum GeometryRepresentation {
   GEOJSON = "geojson",
 }
 
+export enum SessionType {
+  SINGLE = "single",
+  MULTI = "multi",
+}
+
 export enum SessionStatus {
   PENDING = "PENDING",
   PREPARING = "PREPARING",
