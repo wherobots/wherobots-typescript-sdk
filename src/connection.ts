@@ -1,6 +1,6 @@
 import { decode } from "cbor-x";
 import * as uuid from "uuid";
-import WebSocket from "ws";
+import WebSocket from "isomorphic-ws";
 import logger, { sessionContextLogger } from "./logger";
 import {
   CancelExecutionEvent,
