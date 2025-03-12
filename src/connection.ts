@@ -30,7 +30,6 @@ import {
 } from "./api-utils";
 import z from "zod";
 import { Table, TypeMap } from "apache-arrow";
-import readPackageUp from "read-pkg-up";
 
 // used to mock out the fetch and WebSocket APIs
 // in a unit testing environment
@@ -46,14 +45,13 @@ type ConnectionTestHarness = {
   protocolVersion?: string | undefined;
 };
 
-const { packageJson } = readPackageUp.sync({ cwd: __dirname }) || {};
 const API_URL =
   process.env["WHEROBOTS_API_URL"] || "https://api.cloud.wherobots.com";
 
 const PROTOCOL_VERSION = "1.0.0";
 const OS_TYPE = `${process.platform};${process.arch}`;
 const NODE_VERSION = process.version;
-const USER_AGENT = `${packageJson?.name}/${packageJson?.version} os/${OS_TYPE} node/${NODE_VERSION}"`;
+const USER_AGENT = `os/${OS_TYPE} node/${NODE_VERSION}`;
 
 const API_REQUEST_TIMEOUT = 10e3;
 
