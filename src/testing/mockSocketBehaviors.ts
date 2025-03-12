@@ -1,4 +1,4 @@
-import { encode } from "cbor";
+import { encode } from "cbor-x";
 import { readFileSync } from "fs";
 import { resolve } from "path";
 import WebSocket from "ws";

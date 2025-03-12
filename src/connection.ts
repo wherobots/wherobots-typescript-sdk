@@ -1,4 +1,4 @@
-import { decodeFirstSync } from "cbor";
+import { decode } from "cbor-x";
 import * as uuid from "uuid";
 import WebSocket from "ws";
 import logger, { sessionContextLogger } from "./logger";
@@ -355,9 +355,21 @@ export class Connection {
           if (typeof e.data === "string") {
             toParse = JSON.parse(e.data);
           } else if (Array.isArray(e.data)) {
-            toParse = decodeFirstSync(Buffer.concat(e.data));
+            const uint8ArrayArray = e.data.map(
+              (buffer) =>
+                new Uint8Array(
+                  buffer.buffer,
+                  buffer.byteOffset,
+                  buffer.byteLength,
+                ),
+            );
+            toParse = decode(Buffer.concat(uint8ArrayArray));
           } else {
-            toParse = decodeFirstSync(e.data);
+            toParse = decode(
+              e.data instanceof Buffer
+                ? e.data
+                : new Uint8Array(e.data as ArrayBuffer),
+            );
           }
           const data = schema.parse(toParse);
           if (data["execution_id"] === executionId) {

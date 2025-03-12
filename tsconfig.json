@@ -1,18 +1,28 @@
 {
-  "extends": [
-    "@tsconfig/node-lts/tsconfig.json",
-    "@tsconfig/strictest/tsconfig.json"
-  ],
-  "compilerOptions": {
-    "allowJs": false,
-    "checkJs": false,
-    "declaration": true,
-    "resolveJsonModule": true,
-    "paths": {
-      "@/*": ["./src/*"]
+    "extends": [
+        "@tsconfig/node-lts/tsconfig.json",
+        "@tsconfig/strictest/tsconfig.json"
+    ],
+    "compilerOptions": {
+        "allowJs": false,
+        "checkJs": false,
+        "declaration": true,
+        "resolveJsonModule": true,
+        "moduleResolution": "bundler",
+        "module": "esnext",
+        "paths": {
+            "@/*": [
+                "./src/*"
+            ]
+        },
+        "outDir": "./dist"
     },
-    "outDir": "./dist"
-  },
-  "include": ["**/*.ts", "**/*.mts"],
-  "exclude": ["node_modules", "./dist"]
+    "include": [
+        "**/*.ts",
+        "**/*.mts"
+    ],
+    "exclude": [
+        "node_modules",
+        "./dist"
+    ]
 }
