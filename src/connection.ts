@@ -348,7 +348,7 @@ export class Connection {
               logger.child(errorEvent).error("Error event received");
               cleanup();
               abortSignal.removeEventListener("abort", handleSignalAborted);
-              reject(new Error("Error event received"));
+              reject(new Error(errorEvent.message));
             }
           }
           let toParse: unknown;
