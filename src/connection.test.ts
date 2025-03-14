@@ -121,23 +121,6 @@ describe("Connection.connect, when passed connection options", () => {
     expectCorrectApiKey();
   });
 
-  test("rejects if API key is missing", async () => {
-    if (process.env["WHEROBOTS_API_KEY"]) {
-      throw new Error(
-        "this test is invalid if WHEROBOTS_API_KEY environment variable is set",
-      );
-    }
-    const connection = Connection.connect(
-      {
-        runtime: Runtime.TINY,
-      },
-      testHarness,
-    );
-    vi.runAllTimersAsync();
-    await expect(connection).rejects.toBeInstanceOf(Error);
-    expect(fetchMock).not.toHaveBeenCalled();
-  });
-
   test("does not reject if API key is set via env variable", async () => {
     simulateImmediatelyReadySession(fetchMock);
     simulateImmediatelyOpenSocket(MockWebSocket);

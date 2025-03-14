@@ -4,6 +4,7 @@ import { SessionReponse } from "./schemas";
 import { DataCompression, ResultsFormat, SessionStatus } from "./constants";
 import logger from "./logger";
 import { tableFromIPC, TypeMap } from "apache-arrow";
+import { Buffer } from "buffer";
 
 export const parseResponse = async <T extends z.ZodObject<ZodRawShape>>(
   res: Response,

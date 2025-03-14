@@ -8,6 +8,7 @@ import {
   SessionStatus,
   SessionType,
 } from "./constants";
+import { Buffer } from "buffer";
 
 //////////////////////////////////////////////////////////////////////////
 // Schema-definitions for connection options from the consumer
@@ -16,9 +17,12 @@ import {
 // used to generate the typescript type for that constructor
 
 const apiKeySchema = z.string().min(1).max(255);
+const bearerTokenSchema = z.string().min(1);
 
 const ConnectionOptionsSchema = z.object({
+  endpoint: z.string().url().optional(),
   apiKey: apiKeySchema.optional(),
+  bearerToken: bearerTokenSchema.optional(),
   runtime: z.nativeEnum(Runtime),
   region: z.nativeEnum(Region).optional(),
   resultsFormat: z.literal(ResultsFormat.ARROW).optional(),
@@ -33,7 +37,9 @@ export type ConnectionOptions = z.infer<typeof ConnectionOptionsSchema>;
 // for all optional fields
 export const ConnectionOptionsSchemaNormalized = ConnectionOptionsSchema.extend(
   {
-    apiKey: apiKeySchema,
+    endpoint: ConnectionOptionsSchema.shape.endpoint.default(
+      "https://api.cloud.wherobots.com",
+    ),
     region: ConnectionOptionsSchema.shape.region.default(Region.AWS_US_WEST_2),
     resultsFormat: ConnectionOptionsSchema.shape.resultsFormat.default(
       ResultsFormat.ARROW,

@@ -63,7 +63,11 @@ const simulateWebSocketEvent = (
     (call) => call[0] === type,
   );
   listeners.forEach((call) => {
-    call[1](e);
+    if (typeof call[1] === "function") {
+      call[1](e);
+    } else {
+      call[1].handleEvent(e);
+    }
   });
 };
 

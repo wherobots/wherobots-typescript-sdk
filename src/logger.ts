@@ -1,15 +1,18 @@
 import log from "loglevel";
 import { SessionReponse } from "./schemas";
+import { isBrowser } from "./utils";
 
-const shouldUseDebugLogging = (process.env["NODE_DEBUG"] || "")
-  .split(",")
-  .includes("wherobots-sql-driver");
+const shouldUseDebugLogging = isBrowser()
+  ? false
+  : (process?.env["NODE_DEBUG"] || "")
+      .split(",")
+      .includes("wherobots-sql-driver");
 
 // Configure the default logger
 log.setLevel(shouldUseDebugLogging ? log.levels.DEBUG : log.levels.INFO);
 
 // If tests are running, disable the logger
-if (process.env["NODE_ENV"] === "test") {
+if (isBrowser() || process?.env["NODE_ENV"] === "test") {
   log.setLevel(log.levels.SILENT);
 }
 

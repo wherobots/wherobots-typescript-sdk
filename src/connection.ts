@@ -30,6 +30,10 @@ import {
 } from "./api-utils";
 import z from "zod";
 import { Table, TypeMap } from "apache-arrow";
+import { isBrowser } from "./utils";
+import { Buffer } from "buffer";
+import crossFetch from "cross-fetch";
+const fetch = isBrowser() ? crossFetch.bind(window) : crossFetch;
 
 // used to mock out the fetch and WebSocket APIs
 // in a unit testing environment
@@ -45,15 +49,17 @@ type ConnectionTestHarness = {
   protocolVersion?: string | undefined;
 };
 
-const API_URL =
-  process.env["WHEROBOTS_API_URL"] || "https://api.cloud.wherobots.com";
-
+let USER_AGENT = "";
+if (isBrowser()) {
+  USER_AGENT = `browser/${navigator.userAgent}`;
+} else {
+  const OS_TYPE = `${process?.platform};${process?.arch}`;
+  const NODE_VERSION = process?.version;
+  USER_AGENT = `os/${OS_TYPE} node/${NODE_VERSION}`;
+}
 const PROTOCOL_VERSION = "1.0.0";
-const OS_TYPE = `${process.platform};${process.arch}`;
-const NODE_VERSION = process.version;
-const USER_AGENT = `os/${OS_TYPE} node/${NODE_VERSION}`;
 
-const API_REQUEST_TIMEOUT = 10e3;
+const API_REQUEST_TIMEOUT = 15e4;
 
 type ExecuteOptions = {
   signal?: AbortSignal;
@@ -95,21 +101,25 @@ export class Connection {
 
   constructor(options: ConnectionOptions, testHarness?: ConnectionTestHarness) {
     this.options = ConnectionOptionsSchemaNormalized.parse({
-      apiKey: process.env["WHEROBOTS_API_KEY"],
+      apiKey: isBrowser() ? undefined : process?.env["WHEROBOTS_API_KEY"],
+      endpoint: isBrowser() ? undefined : process?.env["WHEROBOTS_API_URI"],
       ...options,
     });
-    if (!this.options.apiKey) {
-      throw new Error(
-        "API key is required. It can be passed as an option or set as the WHEROBOTS_API_KEY environment variable",
-      );
+    // Create headers - this approach only works for Node.js, so it will eventually be deprecated in favor of query params
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      "Cache-Control": "no-store",
+      "User-Agent": USER_AGENT,
+    };
+    if (this.options.apiKey) {
+      headers["X-API-Key"] = this.options.apiKey;
     }
+    if (this.options.bearerToken) {
+      headers["Authorization"] = `Bearer ${this.options.bearerToken}`;
+    }
+
     this.fetchOptions = {
-      headers: {
-        "Content-Type": "application/json",
-        "X-API-Key": this.options.apiKey,
-        "Cache-Control": "no-store",
-        "User-Agent": USER_AGENT,
-      },
+      headers,
       signal: this.sessionAbortController.signal,
       // the types we're using don't recognize the `cache` option
       // even though it is a valid option for the fetch API
@@ -120,7 +130,7 @@ export class Connection {
     this.fetch = testHarness?.fetch || fetch;
     this.WebSocket = testHarness?.WebSocket || WebSocket;
     this.protocolVersion = testHarness?.protocolVersion || PROTOCOL_VERSION;
-    const { apiKey, ...optionsToLog } = this.options;
+    const { apiKey, bearerToken, ...optionsToLog } = this.options;
     logger.child(optionsToLog).debug("Creating connection");
   }
 
@@ -128,7 +138,7 @@ export class Connection {
     const createdSession = await asyncOperationWithRetry(
       (signal) =>
         this.fetch(
-          `${API_URL}/sql/session?region=${encodeURIComponent(this.options.region)}`,
+          `${this.options.endpoint}/sql/session?region=${encodeURIComponent(this.options.region)}`,
           {
             method: "POST",
             body: JSON.stringify({
@@ -153,10 +163,13 @@ export class Connection {
     let numFailedAttempts = 0;
     const establishedSession = await asyncOperationWithRetry(
       (signal) =>
-        this.fetch(`${API_URL}/sql/session/${createdSession.id}`, {
-          ...this.fetchOptions,
-          signal: combineAbortSignals(signal, this.fetchOptions.signal),
-        }),
+        this.fetch(
+          `${this.options.endpoint}/sql/session/${createdSession.id}`,
+          {
+            ...this.fetchOptions,
+            signal: combineAbortSignals(signal, this.fetchOptions.signal),
+          },
+        ),
       {
         retryDelay: backoffRetry,
         retryOn: async (_, error, res) => {
@@ -249,10 +262,26 @@ export class Connection {
           ws.close();
         }
       };
-      const ws = new this.WebSocket(url, {
-        headers: { "X-API-Key": this.options.apiKey },
-        perMessageDeflate: false,
-      });
+      const urlObj = new URL(url);
+      const headers: Record<string, string> = {};
+      if (this.options.apiKey) {
+        headers["X-API-Key"] = this.options.apiKey;
+        urlObj.searchParams.set("apiKey", this.options.apiKey);
+      }
+      if (this.options.bearerToken) {
+        headers["Authorization"] = `Bearer ${this.options.bearerToken}`;
+        urlObj.searchParams.set("bearerToken", this.options.bearerToken);
+      }
+      // Add the API Key and bearer token to query params
+      const ws = new this.WebSocket(
+        urlObj.toString(),
+        isBrowser()
+          ? undefined
+          : {
+              headers,
+              perMessageDeflate: false,
+            },
+      );
       ws.addEventListener("open", onSocketOpen, { once: true });
       ws.addEventListener("error", onSocketFail, { once: true });
       ws.addEventListener("close", onSocketFail, { once: true });
@@ -354,7 +383,7 @@ export class Connection {
             toParse = JSON.parse(e.data);
           } else if (Array.isArray(e.data)) {
             const uint8ArrayArray = e.data.map(
-              (buffer) =>
+              (buffer: Buffer) =>
                 new Uint8Array(
                   buffer.buffer,
                   buffer.byteOffset,

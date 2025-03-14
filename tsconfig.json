@@ -4,6 +4,7 @@
         "@tsconfig/strictest/tsconfig.json"
     ],
     "compilerOptions": {
+        "strictNullChecks": true,
         "allowJs": false,
         "checkJs": false,
         "declaration": true,
@@ -23,6 +24,7 @@
     ],
     "exclude": [
         "node_modules",
+        "browser-test",
         "./dist"
     ]
 }
