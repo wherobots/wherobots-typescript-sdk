@@ -1,21 +1,23 @@
-import { useEffect, useState } from 'react'
-import { Connection, Runtime } from '../../dist/src/index'
+import { useEffect, useState } from "react";
+import { Connection, Runtime } from "../../dist/src/index";
 
 function App() {
-  const [result, setResult] = useState<any>(null)
+  const [result, setResult] = useState<any>(null);
   useEffect(() => {
     const fetchResult = async () => {
       const connection = await Connection.connect({
         runtime: Runtime.TINY,
         // bearerToken: 'changeme',
         // apiKey: 'changeme',
-      })
-      const result = await connection.execute('SHOW SCHEMAS IN wherobots_open_data')
-      console.log(result)
-      setResult(result)
-    }
-    fetchResult()
-  }, [])
+      });
+      const result = await connection.execute(
+        "SHOW SCHEMAS IN wherobots_open_data",
+      );
+      console.log(result);
+      setResult(result);
+    };
+    fetchResult();
+  }, []);
 
   return (
     <>
@@ -25,7 +27,7 @@ function App() {
         </div>
       )}
     </>
-  )
+  );
 }
 
-export default App
+export default App;

@@ -1,11 +1,11 @@
 /*
  * run with:
 
- *   `WHEROBOTS_API_KEY=<api key> node -r @swc-node/register examples/multiSessionConnections.ts`
+ *   `WHEROBOTS_API_KEY=<api key> npx tsx examples/multiSessionConnections.ts`
  * 
  * or for verbose logging:
  * 
- *   `NODE_DEBUG="wherobots-sql-driver" WHEROBOTS_API_KEY=<api key> node -r @swc-node/register examples/multiSessionConnections.ts`
+ *   `NODE_DEBUG="wherobots-sql-driver" WHEROBOTS_API_KEY=<api key> npx tsx examples/multiSessionConnections.ts`
  */
 
 import { Connection } from "@/connection";

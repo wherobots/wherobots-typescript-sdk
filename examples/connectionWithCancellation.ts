@@ -1,11 +1,11 @@
 /*
  * run with:
 
- *   `WHEROBOTS_API_KEY=<api key> node -r @swc-node/register examples/connectionWithCancellation.ts`
+ *   `WHEROBOTS_API_KEY=<api key> npx tsx examples/connectionWithCancellation.ts`
  * 
  * or for verbose logging:
  * 
- *   `NODE_DEBUG="wherobots-sql-driver" WHEROBOTS_API_KEY=<api key> node -r @swc-node/register examples/connectionWithCancellation.ts`
+ *   `NODE_DEBUG="wherobots-sql-driver" WHEROBOTS_API_KEY=<api key> npx tsx examples/connectionWithCancellation.ts`
  */
 
 import { Connection, Runtime } from "@/index";

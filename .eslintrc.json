@@ -1,32 +1,27 @@
 {
-    "extends": [
-        "plugin:@typescript-eslint/recommended",
-        "plugin:prettier/recommended",
-        "plugin:node/recommended",
-        "plugin:security/recommended-legacy"
+  "extends": [
+    "plugin:@typescript-eslint/recommended",
+    "plugin:prettier/recommended",
+    "plugin:node/recommended",
+    "plugin:security/recommended-legacy"
+  ],
+  "ignorePatterns": ["browser-test/**/*"],
+  "rules": {
+    "node/no-unsupported-features/es-syntax": "off",
+    // no-missing-import gets confused by typescript `paths`
+    "node/no-missing-import": "off",
+    "@typescript-eslint/no-unused-vars": [
+      "error",
+      {
+        "ignoreRestSiblings": true
+      }
     ],
-    "ignorePatterns": [
-        "browser-test/**/*"
+    "node/no-unpublished-import": [
+      "error",
+      {
+        "allowModules": ["vitest", "vitest-fetch-mock"]
+      }
     ],
-    "rules": {
-        "node/no-unsupported-features/es-syntax": "off",
-        // no-missing-import gets confused by typescript `paths`
-        "node/no-missing-import": "off",
-        "@typescript-eslint/no-unused-vars": [
-            "error",
-            {
-                "ignoreRestSiblings": true
-            }
-        ],
-        "node/no-unpublished-import": [
-            "error",
-            {
-                "allowModules": [
-                    "vitest",
-                    "vitest-fetch-mock"
-                ]
-            }
-        ],
-        "@typescript-eslint/no-explicit-any": "warn"
-    }
+    "@typescript-eslint/no-explicit-any": "warn"
+  }
 }
