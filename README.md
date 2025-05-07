@@ -126,14 +126,16 @@ The `Connection.connect()` function can take the following additional options:
   convenient for human inspection while still being usable by
   geospatial data manipulation libraries.
 
-- `region`: Currently, the only supported Wherobots compute region is `aws-us-west-2`,
-  in AWS's Oregon (`us-west-2`) region.
+- `region`: You must also specify in which region your SQL session should execute
+  into. Wherobots Cloud supports the following compute regions:
+  - `aws-us-east-1`: AWS US East 1 (N. Virginia)
+  - `aws-us-west-2`: AWS US West 2 (Oregon)
+  - `aws-eu-west-1`: AWS EU West 1 (Ireland)
 
-> [!WARNING]
-> To prepare for the expansion of Wherobots Cloud to new regions and cloud providers, the `region` parameter will become mandatory in a future SDK version.
-> Before this support for new regions is added, we will release an updated version of the SDK.
-> If you continue using an older SDK version, your existing connect requests will still work.
-> However, any new or existing SQL session you create without specifying the `region` parameter will be hosted in the `aws-us-west-2` region.
+> [!IMPORTANT]
+> The `aws-us-west-2` region is available to all Wherobots Cloud users
+> and customers; other regions are currently reserved to Professional
+> Edition customers.
 
 ### Additional parameters to `execute()`
 
