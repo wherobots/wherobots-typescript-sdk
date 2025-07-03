@@ -319,6 +319,8 @@ export class Connection {
     abortSignal: AbortSignal,
   ): Promise<z.infer<T>> {
     return new Promise<z.infer<T>>((resolve, reject) => {
+      let promiseSettled = false;
+
       const sendCancellation = () => {
         logger.child({ executionId }).debug("Sending cancel event");
         const cancelEvent: CancelExecutionEvent = {
@@ -327,11 +329,15 @@ export class Connection {
         };
         this.ws?.send(JSON.stringify(cancelEvent));
       };
+
       const handleSignalAborted = () => {
+        if (promiseSettled) return;
         sendCancellation();
         cleanup();
+        promiseSettled = true;
         reject(new Error("Execution aborted"));
       };
+
       abortSignal.addEventListener("abort", handleSignalAborted);
       if (abortSignal.aborted) {
         sendCancellation();
@@ -340,15 +346,36 @@ export class Connection {
       }
 
       const handleMessage = (e: WebSocket.MessageEvent) => {
+        if (promiseSettled) return;
+
         try {
           if (typeof e.data === "string") {
             const { success: isError, data: errorEvent } =
               ErrorEventSchema.safeParse(JSON.parse(e.data));
             if (isError) {
+              // If the abort signal is aborted and the error is "Execution not found",
+              // treat this as a successful cancellation rather than an error
+              if (
+                abortSignal.aborted &&
+                errorEvent.message === "Execution not found"
+              ) {
+                logger
+                  .child(errorEvent)
+                  .debug(
+                    "Received 'Execution not found' after cancellation - treating as successful abort",
+                  );
+                cleanup();
+                abortSignal.removeEventListener("abort", handleSignalAborted);
+                promiseSettled = true;
+                reject(new Error("Execution aborted"));
+                return;
+              }
               logger.child(errorEvent).error("Error event received");
               cleanup();
               abortSignal.removeEventListener("abort", handleSignalAborted);
+              promiseSettled = true;
               reject(new Error("Error event received"));
+              return;
             }
           }
           let toParse: unknown;
@@ -363,6 +390,7 @@ export class Connection {
           if (data["execution_id"] === executionId) {
             cleanup();
             abortSignal.removeEventListener("abort", handleSignalAborted);
+            promiseSettled = true;
             resolve(data);
           }
         } catch (err) {

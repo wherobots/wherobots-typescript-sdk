@@ -365,3 +365,49 @@ export const wasSocketClosed = (mockWebSocket: MockWebSocket) => {
   const [instance] = mockWebSocket.mock.results;
   return instance?.value.close.mock.calls.length > 0;
 };
+
+// this simulates a socket that will respond with "Execution not found" error
+// when a cancellation is sent, mimicking the server behavior when an execution
+// is cancelled but the execution has already been cleaned up on the server
+export const simulateSocketWithCancellationNotFoundError = (
+  mockWebSocket: MockWebSocket,
+) => {
+  let instance: ReturnType<typeof mockWebSocketDefaultImplementation>;
+  let executionId: string;
+
+  mockWebSocket.mockImplementation(() => {
+    instance = mockWebSocketDefaultImplementation();
+    simulateHandleOpen(instance);
+
+    // First call - execute_sql
+    instance.send.mockImplementationOnce((data: string) => {
+      const message = ExecuteSQLEventSchema.parse(JSON.parse(data));
+      executionId = message.execution_id;
+      simulateStateUpdateSuccess(instance, data);
+    });
+
+    // Second call - could be retrieve_results or cancel
+    instance.send.mockImplementation((data: string) => {
+      const message = JSON.parse(data);
+
+      if (message.kind === "cancel") {
+        // Simulate server responding with "Execution not found" error
+        // This should happen immediately, not via setTimeout
+        simulateWebSocketEvent(instance, {
+          type: "message",
+          data: JSON.stringify({
+            kind: "error",
+            execution_id: executionId,
+            message: "Execution not found",
+          } satisfies ErrorEvent),
+        } as WebSocket.MessageEvent);
+      } else if (message.kind === "retrieve_results") {
+        simulateExecutionResult(instance, data, {
+          result_bytes: showSchemasPayloadBrotli,
+        });
+      }
+    });
+
+    return instance;
+  });
+};
