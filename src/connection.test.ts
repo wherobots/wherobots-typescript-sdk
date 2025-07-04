@@ -32,6 +32,7 @@ import {
   simulateSocketWithSingleExecution,
   simulateSocketWithSingleExecutionError,
   simulateSocketWithSingleExecutionPaused,
+  simulateSocketWithExecutionSuccessThenAbort,
   simulateSocketWithTransitentConnectionErrors,
   wasSocketClosed,
 } from "./testing/mockSocketBehaviors";
@@ -450,6 +451,41 @@ describe("Connection#execute, when executing a single SQL statement", async () =
       expect.objectContaining({ kind: "execute_sql" }),
       expect.objectContaining({ kind: "cancel" }),
     ]);
+    expect(wasSocketClosed(MockWebSocket)).toEqual(false);
+  });
+
+  test("throws 'Execution aborted' if execution is aborted after success but before results retrieval", async () => {
+    simulateImmediatelyReadySession(fetchMock);
+    const { waitForExecutionSuccess } = simulateSocketWithExecutionSuccessThenAbort(MockWebSocket);
+    const connection = createConnectionUnderTest();
+    vi.runAllTimersAsync();
+    const abortController = new AbortController();
+    
+    // Start the execution
+    const resultPromise = (await connection).execute(
+      "SHOW SCHEMAS IN wherobots_open_data",
+      { signal: abortController.signal },
+    );
+    
+    // Abort immediately, before even waiting for execution success
+    // This should trigger the new check added in connection.ts
+    abortController.abort();
+    
+    // Wait for the execution to succeed  
+    await waitForExecutionSuccess();
+    
+    // Now run timers to let the execution logic complete
+    vi.runAllTimersAsync();
+    
+    // Expect the execution to be aborted with the correct error message
+    await expect(resultPromise).rejects.toThrow("Execution aborted");
+    
+    // Since abort happened early, we should either get just execute_sql + cancel, 
+    // or execute_sql alone if the new check prevents retrieve_results
+    const messages = getSentMessages(MockWebSocket);
+    expect(messages).toContainEqual(expect.objectContaining({ kind: "execute_sql" }));
+    // The key test: retrieve_results should NOT be sent because of the new check
+    expect(messages.some(msg => msg.kind === "retrieve_results")).toBe(false);
     expect(wasSocketClosed(MockWebSocket)).toEqual(false);
   });
 });
