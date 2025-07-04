@@ -411,3 +411,47 @@ export const simulateSocketWithCancellationNotFoundError = (
     return instance;
   });
 };
+
+// This simulates the scenario where an execution completes successfully,
+// but when retrieve_results is sent, the server responds with "Execution not found"
+// because the execution has been cleaned up (e.g., due to cancellation)
+export const simulateSocketWithRetrieveResultsNotFoundError = (
+  mockWebSocket: MockWebSocket,
+) => {
+  let instance: ReturnType<typeof mockWebSocketDefaultImplementation>;
+  let executionId: string;
+
+  mockWebSocket.mockImplementation(() => {
+    instance = mockWebSocketDefaultImplementation();
+    simulateHandleOpen(instance);
+
+    // First call - execute_sql
+    instance.send.mockImplementationOnce((data: string) => {
+      const message = ExecuteSQLEventSchema.parse(JSON.parse(data));
+      executionId = message.execution_id;
+      simulateStateUpdateSuccess(instance, data);
+    });
+
+    // Second call - could be retrieve_results or cancel
+    instance.send.mockImplementation((data: string) => {
+      const message = JSON.parse(data);
+
+      if (message.kind === "retrieve_results") {
+        // Simulate server responding with "Execution not found" error
+        // when trying to retrieve results from a cleaned up execution
+        simulateWebSocketEvent(instance, {
+          type: "message",
+          data: JSON.stringify({
+            kind: "error",
+            execution_id: executionId,
+            message: "Execution not found",
+          } satisfies ErrorEvent),
+        } as WebSocket.MessageEvent);
+      } else if (message.kind === "cancel") {
+        // If cancel is sent, just ignore it (execution already cleaned up)
+      }
+    });
+
+    return instance;
+  });
+};

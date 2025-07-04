@@ -353,16 +353,14 @@ export class Connection {
             const { success: isError, data: errorEvent } =
               ErrorEventSchema.safeParse(JSON.parse(e.data));
             if (isError) {
-              // If the abort signal is aborted and the error is "Execution not found",
-              // treat this as a successful cancellation rather than an error
-              if (
-                abortSignal.aborted &&
-                errorEvent.message === "Execution not found"
-              ) {
+              // If the error is "Execution not found", this typically means the execution
+              // has been cleaned up on the server (either due to cancellation or timeout).
+              // We should handle this gracefully regardless of the abort signal state.
+              if (errorEvent.message === "Execution not found") {
                 logger
                   .child(errorEvent)
                   .debug(
-                    "Received 'Execution not found' after cancellation - treating as successful abort",
+                    "Received 'Execution not found' - execution was cleaned up on server",
                   );
                 cleanup();
                 abortSignal.removeEventListener("abort", handleSignalAborted);
