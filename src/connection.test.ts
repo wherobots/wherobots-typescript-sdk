@@ -33,8 +33,6 @@ import {
   simulateSocketWithSingleExecutionError,
   simulateSocketWithSingleExecutionPaused,
   simulateSocketWithTransitentConnectionErrors,
-  simulateSocketWithCancellationNotFoundError,
-  simulateSocketWithRetrieveResultsNotFoundError,
   wasSocketClosed,
 } from "./testing/mockSocketBehaviors";
 import { NUM_RESLIENCY_RETRIES } from "./api-utils";
@@ -451,59 +449,6 @@ describe("Connection#execute, when executing a single SQL statement", async () =
     expect(getSentMessages(MockWebSocket)).toEqual([
       expect.objectContaining({ kind: "execute_sql" }),
       expect.objectContaining({ kind: "cancel" }),
-    ]);
-    expect(wasSocketClosed(MockWebSocket)).toEqual(false);
-  });
-
-  test("handles 'Execution not found' error gracefully when cancelling execution", async () => {
-    simulateImmediatelyReadySession(fetchMock);
-    simulateSocketWithCancellationNotFoundError(MockWebSocket);
-    const connection = createConnectionUnderTest();
-    vi.runAllTimersAsync();
-    const abortController = new AbortController();
-    const result = (await connection).execute(
-      "SHOW SCHEMAS IN wherobots_open_data",
-      { signal: abortController.signal },
-    );
-    vi.runAllTimersAsync();
-    expect(getSentMessages(MockWebSocket)).toEqual([
-      expect.objectContaining({ kind: "execute_sql" }),
-    ]);
-    // Cancel the execution - this should trigger the server to respond with "Execution not found"
-    abortController.abort();
-    vi.runAllTimersAsync();
-    // The promise should be rejected with "Execution aborted", not "Error event received"
-    await expect(result).rejects.toThrow("Execution aborted");
-    expect(getSentMessages(MockWebSocket)).toEqual([
-      expect.objectContaining({ kind: "execute_sql" }),
-      expect.objectContaining({ kind: "cancel" }),
-    ]);
-    expect(wasSocketClosed(MockWebSocket)).toEqual(false);
-  });
-
-  test("handles 'Execution not found' error when retrieving results from canceled execution", async () => {
-    simulateImmediatelyReadySession(fetchMock);
-    simulateSocketWithRetrieveResultsNotFoundError(MockWebSocket);
-    const connection = createConnectionUnderTest();
-    vi.runAllTimersAsync();
-    const abortController = new AbortController();
-    const result = (await connection).execute(
-      "SHOW SCHEMAS IN wherobots_open_data",
-      { signal: abortController.signal },
-    );
-    vi.runAllTimersAsync();
-    expect(getSentMessages(MockWebSocket)).toEqual([
-      expect.objectContaining({ kind: "execute_sql" }),
-    ]);
-
-    // Wait for execution to complete successfully
-    await vi.runAllTimersAsync();
-
-    // The promise should be rejected with "Execution aborted" since the execution was cleaned up
-    await expect(result).rejects.toThrow("Execution aborted");
-    expect(getSentMessages(MockWebSocket)).toEqual([
-      expect.objectContaining({ kind: "execute_sql" }),
-      expect.objectContaining({ kind: "retrieve_results" }),
     ]);
     expect(wasSocketClosed(MockWebSocket)).toEqual(false);
   });

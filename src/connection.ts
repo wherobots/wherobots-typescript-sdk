@@ -289,6 +289,11 @@ export class Connection {
       .debug("Waiting for execution to be successful");
     await executionSuccessPromise;
 
+    // Check if the execution was aborted before proceeding to retrieve results
+    if (executionAbortSignal.aborted) {
+      throw new Error("Execution aborted");
+    }
+
     const resultsPromise = this.waitForMessage(
       executionId,
       ExecutionResultEventSchema,
@@ -319,8 +324,6 @@ export class Connection {
     abortSignal: AbortSignal,
   ): Promise<z.infer<T>> {
     return new Promise<z.infer<T>>((resolve, reject) => {
-      let promiseSettled = false;
-
       const sendCancellation = () => {
         logger.child({ executionId }).debug("Sending cancel event");
         const cancelEvent: CancelExecutionEvent = {
@@ -329,15 +332,11 @@ export class Connection {
         };
         this.ws?.send(JSON.stringify(cancelEvent));
       };
-
       const handleSignalAborted = () => {
-        if (promiseSettled) return;
         sendCancellation();
         cleanup();
-        promiseSettled = true;
         reject(new Error("Execution aborted"));
       };
-
       abortSignal.addEventListener("abort", handleSignalAborted);
       if (abortSignal.aborted) {
         sendCancellation();
@@ -346,34 +345,15 @@ export class Connection {
       }
 
       const handleMessage = (e: WebSocket.MessageEvent) => {
-        if (promiseSettled) return;
-
         try {
           if (typeof e.data === "string") {
             const { success: isError, data: errorEvent } =
               ErrorEventSchema.safeParse(JSON.parse(e.data));
             if (isError) {
-              // If the error is "Execution not found", this typically means the execution
-              // has been cleaned up on the server (either due to cancellation or timeout).
-              // We should handle this gracefully regardless of the abort signal state.
-              if (errorEvent.message === "Execution not found") {
-                logger
-                  .child(errorEvent)
-                  .debug(
-                    "Received 'Execution not found' - execution was cleaned up on server",
-                  );
-                cleanup();
-                abortSignal.removeEventListener("abort", handleSignalAborted);
-                promiseSettled = true;
-                reject(new Error("Execution aborted"));
-                return;
-              }
               logger.child(errorEvent).error("Error event received");
               cleanup();
               abortSignal.removeEventListener("abort", handleSignalAborted);
-              promiseSettled = true;
               reject(new Error("Error event received"));
-              return;
             }
           }
           let toParse: unknown;
@@ -388,7 +368,6 @@ export class Connection {
           if (data["execution_id"] === executionId) {
             cleanup();
             abortSignal.removeEventListener("abort", handleSignalAborted);
-            promiseSettled = true;
             resolve(data);
           }
         } catch (err) {
