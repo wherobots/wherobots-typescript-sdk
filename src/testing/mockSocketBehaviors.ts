@@ -230,52 +230,6 @@ export const simulateSocketWithSingleExecutionPaused = (
   return { resume };
 };
 
-// this simulates a socket that will immediately respond to execute_sql with success,
-// but provides a callback to trigger the abort after the execution succeeds
-export const simulateSocketWithExecutionSuccessThenAbort = (
-  mockWebSocket: MockWebSocket,
-) => {
-  let instance: ReturnType<typeof mockWebSocketDefaultImplementation>;
-  let executionCompleted = false;
-  
-  const waitForExecutionSuccess = () => {
-    return new Promise<void>((resolve) => {
-      const checkCompletion = () => {
-        if (executionCompleted) {
-          resolve();
-        } else {
-          setTimeout(checkCompletion, 1);
-        }
-      };
-      checkCompletion();
-    });
-  };
-
-  mockWebSocket.mockImplementation(() => {
-    instance = mockWebSocketDefaultImplementation();
-    simulateHandleOpen(instance);
-    instance.send.mockImplementationOnce((data: string) => {
-      // Respond with execution success after a small delay
-      setTimeout(() => {
-        simulateWebSocketEvent(instance, {
-          type: "message",
-          data: JSON.stringify({
-            kind: "state_updated",
-            execution_id: JSON.parse(data).execution_id,
-            state: "succeeded",
-          } satisfies StateUpdatedEvent),
-        } as WebSocket.MessageEvent);
-        executionCompleted = true;
-      }, 5);
-    });
-    // Do not set up a handler for the retrieve_results message
-    // This allows the test to abort after execution success but before results retrieval
-    return instance;
-  });
-  
-  return { waitForExecutionSuccess };
-};
-
 export const simulateSocketWithSingleExecutionError = (
   mockWebSocket: MockWebSocket,
 ) => {

@@ -289,11 +289,6 @@ export class Connection {
       .debug("Waiting for execution to be successful");
     await executionSuccessPromise;
 
-    // Check if the execution was aborted before proceeding to retrieve results
-    if (executionAbortSignal.aborted) {
-      throw new Error("Execution aborted");
-    }
-
     const resultsPromise = this.waitForMessage(
       executionId,
       ExecutionResultEventSchema,
@@ -349,7 +344,7 @@ export class Connection {
           if (typeof e.data === "string") {
             const { success: isError, data: errorEvent } =
               ErrorEventSchema.safeParse(JSON.parse(e.data));
-            if (isError) {
+            if (isError && errorEvent.execution_id === executionId) {
               logger.child(errorEvent).error("Error event received");
               cleanup();
               abortSignal.removeEventListener("abort", handleSignalAborted);
