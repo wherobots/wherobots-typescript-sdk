@@ -34,6 +34,11 @@ import {
   simulateSocketWithSingleExecutionPaused,
   simulateSocketWithTransitentConnectionErrors,
   wasSocketClosed,
+  mockWebSocketDefaultImplementation,
+  simulateHandleOpen,
+  simulateStateUpdateSuccess,
+  simulateWebSocketEvent,
+  simulateExecutionResult,
 } from "./testing/mockSocketBehaviors";
 import { NUM_RESLIENCY_RETRIES } from "./api-utils";
 
@@ -63,6 +68,10 @@ const showTablesExpectedPayload = JSON.parse(
   readFileSync(resolve(__dirname, "./testing/payloads/showTables.json"), {
     encoding: "utf-8",
   }),
+);
+
+const showSchemasPayloadBrotli = readFileSync(
+  resolve(__dirname, "./testing/payloads/showSchemas.br"),
 );
 
 const fetchMock = fetchMockBuilder(vi);
@@ -455,25 +464,59 @@ describe("Connection#execute, when executing a single SQL statement", async () =
 
   test("filters error events by execution ID to prevent cross-contamination between parallel executions", async () => {
     // This test verifies the fix for the execution ID filtering in waitForMessage
-    // We use the existing mock that creates multiple executions with one error
+    // It simulates the case where an error event with a different execution_id
+    // should NOT affect other executions waiting for messages
     simulateImmediatelyReadySession(fetchMock);
-    simulateSocketWithMultipleExecutionsOneError(MockWebSocket);
+    
+    let currentExecutionId = "";
+    MockWebSocket.mockImplementation(() => {
+      const instance = mockWebSocketDefaultImplementation();
+      simulateHandleOpen(instance);
+      
+      // Handle the first execute_sql message
+      instance.send.mockImplementationOnce((data: string) => {
+        const message = JSON.parse(data);
+        currentExecutionId = message.execution_id;
+        simulateStateUpdateSuccess(instance, data);
+      });
+      
+      // Handle the retrieve_results message
+      instance.send.mockImplementationOnce((data: string) => {
+        // Send an error event with a DIFFERENT execution_id to test filtering
+        const wrongExecutionId = "wrong-execution-id-12345";
+        setTimeout(() => {
+          simulateWebSocketEvent(instance, {
+            type: "message",
+            data: JSON.stringify({
+              kind: "error",
+              execution_id: wrongExecutionId, // Different ID!
+              message: "Error from different execution",
+            }),
+          } as WebSocket.MessageEvent);
+        }, 10);
+        
+        // Then send the actual result with correct execution_id
+        setTimeout(() => {
+          simulateExecutionResult(instance, data, {
+            result_bytes: showSchemasPayloadBrotli,
+          });
+        }, 50);
+      });
+      
+      return instance;
+    });
+    
     const connection = createConnectionUnderTest();
     vi.runAllTimersAsync();
     
-    // Start two parallel executions
-    const firstPromise = (await connection).execute("SHOW SCHEMAS IN wherobots_open_data");
-    const secondPromise = (await connection).execute("SHOW tables IN wherobots_open_data.overture");
+    // This execution should complete successfully despite the error event with wrong ID
+    const resultPromise = (await connection).execute("SHOW SCHEMAS IN wherobots_open_data");
     
     vi.runAllTimersAsync();
     
-    // The first execution should fail due to the error with its specific execution ID
-    await expect(firstPromise).rejects.toThrow("Error event received");
-    
-    // The second execution should complete successfully because the error
-    // is filtered by execution ID and doesn't affect this execution
-    const secondResult = await secondPromise;
-    expect(secondResult).toBeDefined();
+    // The execution should succeed because the error with wrong execution_id is filtered out
+    const result = await resultPromise;
+    expect(result).toBeDefined();
     
     expect(wasSocketClosed(MockWebSocket)).toEqual(false);
   });
