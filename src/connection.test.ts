@@ -4,6 +4,7 @@ import { expect, test, describe, vi, beforeEach } from "vitest";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import fetchMockBuilder, { FetchMock } from "vitest-fetch-mock";
+import WebSocket from "ws";
 import { Connection } from "./connection";
 import { Runtime, SessionType } from "./constants";
 import {
@@ -467,19 +468,16 @@ describe("Connection#execute, when executing a single SQL statement", async () =
     // It simulates the case where an error event with a different execution_id
     // should NOT affect other executions waiting for messages
     simulateImmediatelyReadySession(fetchMock);
-    
-    let currentExecutionId = "";
+
     MockWebSocket.mockImplementation(() => {
       const instance = mockWebSocketDefaultImplementation();
       simulateHandleOpen(instance);
-      
+
       // Handle the first execute_sql message
       instance.send.mockImplementationOnce((data: string) => {
-        const message = JSON.parse(data);
-        currentExecutionId = message.execution_id;
         simulateStateUpdateSuccess(instance, data);
       });
-      
+
       // Handle the retrieve_results message
       instance.send.mockImplementationOnce((data: string) => {
         // Send an error event with a DIFFERENT execution_id to test filtering
@@ -494,7 +492,7 @@ describe("Connection#execute, when executing a single SQL statement", async () =
             }),
           } as WebSocket.MessageEvent);
         }, 10);
-        
+
         // Then send the actual result with correct execution_id
         setTimeout(() => {
           simulateExecutionResult(instance, data, {
@@ -502,22 +500,24 @@ describe("Connection#execute, when executing a single SQL statement", async () =
           });
         }, 50);
       });
-      
+
       return instance;
     });
-    
+
     const connection = createConnectionUnderTest();
     vi.runAllTimersAsync();
-    
+
     // This execution should complete successfully despite the error event with wrong ID
-    const resultPromise = (await connection).execute("SHOW SCHEMAS IN wherobots_open_data");
-    
+    const resultPromise = (await connection).execute(
+      "SHOW SCHEMAS IN wherobots_open_data",
+    );
+
     vi.runAllTimersAsync();
-    
+
     // The execution should succeed because the error with wrong execution_id is filtered out
     const result = await resultPromise;
     expect(result).toBeDefined();
-    
+
     expect(wasSocketClosed(MockWebSocket)).toEqual(false);
   });
 });
