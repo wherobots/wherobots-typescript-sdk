@@ -341,16 +341,6 @@ export class Connection {
 
       const handleMessage = (e: WebSocket.MessageEvent) => {
         try {
-          if (typeof e.data === "string") {
-            const { success: isError, data: errorEvent } =
-              ErrorEventSchema.safeParse(JSON.parse(e.data));
-            if (isError && errorEvent.execution_id === executionId) {
-              logger.child(errorEvent).error("Error event received");
-              cleanup();
-              abortSignal.removeEventListener("abort", handleSignalAborted);
-              reject(new Error("Error event received"));
-            }
-          }
           let toParse: unknown;
           if (typeof e.data === "string") {
             toParse = JSON.parse(e.data);
@@ -359,12 +349,30 @@ export class Connection {
           } else {
             toParse = decodeFirstSync(e.data);
           }
-          const data = schema.parse(toParse);
-          if (data["execution_id"] === executionId) {
+
+          // Early check: only process messages that belong to this execution
+          const { success: hasExecutionId, data: eventWithId } =
+            EventWithExecutionIdSchema.safeParse(toParse);
+          if (!hasExecutionId || eventWithId.execution_id !== executionId) {
+            return; // Ignore messages for other executions
+          }
+
+          // Check if this is an error event
+          const { success: isError, data: errorEvent } =
+            ErrorEventSchema.safeParse(toParse);
+          if (isError) {
+            logger.child(errorEvent).error("Error event received");
             cleanup();
             abortSignal.removeEventListener("abort", handleSignalAborted);
-            resolve(data);
+            reject(new Error("Error event received"));
+            return;
           }
+
+          // Try to parse as the expected schema
+          const data = schema.parse(toParse);
+          cleanup();
+          abortSignal.removeEventListener("abort", handleSignalAborted);
+          resolve(data);
         } catch (err) {
           // ignore the message if it doesn't match the schema
           // note that this could be because "status" is "failed",
