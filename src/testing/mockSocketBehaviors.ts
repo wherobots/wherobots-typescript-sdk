@@ -48,6 +48,8 @@ const mockWebSocketDefaultImplementation = () => ({
   removeEventListener: vi.fn(),
 });
 
+export { mockWebSocketDefaultImplementation };
+
 export const resetMockWebSocket = (mockWebSocket: MockWebSocket) => {
   mockWebSocket
     .mockReset()
@@ -67,6 +69,8 @@ const simulateWebSocketEvent = (
   });
 };
 
+export { simulateWebSocketEvent };
+
 const simulateHandleOpen = (socketInstance: ReturnType<MockWebSocket>) => {
   setTimeout(() =>
     simulateWebSocketEvent(socketInstance, {
@@ -74,6 +78,8 @@ const simulateHandleOpen = (socketInstance: ReturnType<MockWebSocket>) => {
     } as WebSocket.Event),
   );
 };
+
+export { simulateHandleOpen };
 
 const simulateStateUpdateSuccess = (
   socketInstance: ReturnType<MockWebSocket>,
@@ -91,6 +97,8 @@ const simulateStateUpdateSuccess = (
     } as WebSocket.MessageEvent),
   );
 };
+
+export { simulateStateUpdateSuccess };
 
 const simulateExecutionError = (
   socketInstance: ReturnType<MockWebSocket>,
@@ -143,6 +151,8 @@ const simulateExecutionResult = (
     );
   }
 };
+
+export { simulateExecutionResult };
 
 export const simulateImmediatelyOpenSocket = (mockWebSocket: MockWebSocket) => {
   mockWebSocket.mockImplementation(() => {
