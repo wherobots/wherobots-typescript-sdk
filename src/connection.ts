@@ -135,6 +135,7 @@ export class Connection {
             method: "POST",
             body: JSON.stringify({
               runtimeId: this.options.runtime,
+              version: this.options.version,
               sessionType: this.options.sessionType,
             }),
             ...this.fetchOptions,
