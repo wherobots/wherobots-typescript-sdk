@@ -21,6 +21,7 @@ const ConnectionOptionsSchema = z.object({
   apiKey: apiKeySchema.optional(),
   runtime: z.nativeEnum(Runtime),
   region: z.nativeEnum(Region).optional(),
+  version: z.string().nullable().optional(),
   resultsFormat: z.literal(ResultsFormat.ARROW).optional(),
   dataCompression: z.literal(DataCompression.BROTLI).optional(),
   geometryRepresentation: z.nativeEnum(GeometryRepresentation).optional(),
