@@ -213,6 +213,37 @@ describe("Connection.connect, when passed connection options", () => {
       sessionType: "multi",
     });
   });
+
+  test("can be set with shutdownAfterInactiveSeconds", async () => {
+    simulateImmediatelyReadySession(fetchMock);
+    simulateImmediatelyOpenSocket(MockWebSocket);
+    Connection.connect(
+      {
+        apiKey: testApiKey,
+        runtime: Runtime.TINY,
+        shutdownAfterInactiveSeconds: 3600,
+      },
+      testHarness,
+    );
+    vi.runAllTimersAsync();
+    expectMatchingSessionCreateBody(fetchMock, {
+      shutdownAfterInactiveSeconds: 3600,
+    });
+  });
+
+  test("rejects if shutdownAfterInactiveSeconds is invalid", async () => {
+    const connection = Connection.connect(
+      {
+        apiKey: testApiKey,
+        runtime: Runtime.TINY,
+        shutdownAfterInactiveSeconds: -100,
+      },
+      testHarness,
+    );
+    vi.runAllTimersAsync();
+    await expect(connection).rejects.toBeInstanceOf(Error);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 });
 
 describe("Connection.connect, when establishing SQL session", () => {

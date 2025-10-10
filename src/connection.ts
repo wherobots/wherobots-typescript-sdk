@@ -137,6 +137,8 @@ export class Connection {
               runtimeId: this.options.runtime,
               version: this.options.version,
               sessionType: this.options.sessionType,
+              shutdownAfterInactiveSeconds:
+                this.options.shutdownAfterInactiveSeconds,
             }),
             ...this.fetchOptions,
             signal: combineAbortSignals(signal, this.fetchOptions.signal),

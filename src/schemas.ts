@@ -26,6 +26,7 @@ const ConnectionOptionsSchema = z.object({
   dataCompression: z.literal(DataCompression.BROTLI).optional(),
   geometryRepresentation: z.nativeEnum(GeometryRepresentation).optional(),
   sessionType: z.nativeEnum(SessionType).optional(),
+  shutdownAfterInactiveSeconds: z.number().int().positive().optional(),
 });
 
 export type ConnectionOptions = z.infer<typeof ConnectionOptionsSchema>;
