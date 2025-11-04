@@ -108,6 +108,11 @@ The `Connection.connect()` function can take the following additional options:
   impacts from shared resources. You might need to adjust cluster size if slowdowns
   occur, which could affect overall cost.
 
+- `force_new`: passing `force_new: true` forces Wherobots Cloud to create
+  and start a new SQL Session runtime for this connection instead of
+  attempting to reuse an existing, available one. Note that this can
+  severely impact the delay in obtaining a connection to your runtime.
+
 - `shutdownAfterInactiveSeconds`: a positive integer specifying the number of
   seconds of inactivity before the SQL session is automatically shut down
   (optional). This parameter allows for better resource management and cost

@@ -130,7 +130,7 @@ export class Connection {
     const createdSession = await asyncOperationWithRetry(
       (signal) =>
         this.fetch(
-          `${API_URL}/sql/session?region=${encodeURIComponent(this.options.region)}`,
+          `${API_URL}/sql/session?region=${encodeURIComponent(this.options.region)}&force_new=${this.options.forceNew}`,
           {
             method: "POST",
             body: JSON.stringify({

@@ -26,6 +26,7 @@ const ConnectionOptionsSchema = z.object({
   dataCompression: z.literal(DataCompression.BROTLI).optional(),
   geometryRepresentation: z.nativeEnum(GeometryRepresentation).optional(),
   sessionType: z.nativeEnum(SessionType).optional(),
+  forceNew: z.boolean().optional(),
   shutdownAfterInactiveSeconds: z.number().int().positive().optional(),
 });
 
@@ -50,6 +51,7 @@ export const ConnectionOptionsSchemaNormalized = ConnectionOptionsSchema.extend(
     sessionType: ConnectionOptionsSchema.shape.sessionType.default(
       SessionType.SINGLE,
     ),
+    forceNew: ConnectionOptionsSchema.shape.forceNew.default(false),
   },
 );
 
