@@ -2,9 +2,7 @@ import z from "zod";
 import {
   DataCompression,
   GeometryRepresentation,
-  Region,
   ResultsFormat,
-  Runtime,
   SessionStatus,
   SessionType,
 } from "./constants";
@@ -19,19 +17,21 @@ const apiKeySchema = z.string().min(1).max(255);
 
 const ConnectionOptionsSchema = z.object({
   apiKey: apiKeySchema.optional(),
-  // Accept a `Runtime` enum value (for autocomplete) or a raw string; strings
-  // are passed to the API as-is. When omitted, the org's default runtime is used.
+  // Accepts any non-empty string; `Runtime` enum values are passed through as-is.
+  // When omitted, the org's default runtime is used.
   runtime: z
-    .union([z.nativeEnum(Runtime), z.string()])
+    .string()
+    .min(1)
     .describe(
       "Override the default runtime set for your organization. Only set this if you need a specific runtime instead of the one your administrator has configured. When omitted, your organization's default runtime is used.",
     )
     .optional(),
-  // Accept a `Region` enum value (for autocomplete) or a raw string (e.g. a
-  // BYOC region like "byoc-acme-us-east-1"); strings are passed to the API
-  // as-is. When omitted, the org's default region is used.
+  // Accepts any non-empty string; `Region` enum values and BYOC region
+  // identifiers (e.g. "byoc-acme-us-east-1") are passed through as-is.
+  // When omitted, the org's default region is used.
   region: z
-    .union([z.nativeEnum(Region), z.string()])
+    .string()
+    .min(1)
     .describe(
       "Override the default region set for your organization. Only set this if you intend to use a specific region instead of the one your administrator has configured. When omitted, your organization's default region is used.",
     )
