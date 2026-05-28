@@ -2,9 +2,7 @@ import z from "zod";
 import {
   DataCompression,
   GeometryRepresentation,
-  Region,
   ResultsFormat,
-  Runtime,
   SessionStatus,
   SessionType,
 } from "./constants";
@@ -19,8 +17,25 @@ const apiKeySchema = z.string().min(1).max(255);
 
 const ConnectionOptionsSchema = z.object({
   apiKey: apiKeySchema.optional(),
-  runtime: z.nativeEnum(Runtime),
-  region: z.nativeEnum(Region).optional(),
+  // Accepts any non-empty string; `Runtime` enum values are passed through as-is.
+  // When omitted, the org's default runtime is used.
+  runtime: z
+    .string()
+    .min(1)
+    .describe(
+      "Override the default runtime set for your organization. Only set this if you need a specific runtime instead of the one your administrator has configured. When omitted, your organization's default runtime is used.",
+    )
+    .optional(),
+  // Accepts any non-empty string; `Region` enum values and BYOC region
+  // identifiers (e.g. "byoc-acme-us-east-1") are passed through as-is.
+  // When omitted, the org's default region is used.
+  region: z
+    .string()
+    .min(1)
+    .describe(
+      "Override the default region set for your organization. Only set this if you intend to use a specific region instead of the one your administrator has configured. When omitted, your organization's default region is used.",
+    )
+    .optional(),
   version: z.string().nullable().optional(),
   resultsFormat: z.literal(ResultsFormat.ARROW).optional(),
   dataCompression: z.literal(DataCompression.BROTLI).optional(),
@@ -37,7 +52,9 @@ export type ConnectionOptions = z.infer<typeof ConnectionOptionsSchema>;
 export const ConnectionOptionsSchemaNormalized = ConnectionOptionsSchema.extend(
   {
     apiKey: apiKeySchema,
-    region: ConnectionOptionsSchema.shape.region.default(Region.AWS_US_WEST_2),
+    // No region/runtime default: when the consumer omits them they stay
+    // undefined and are dropped from the request so the API applies the
+    // organization's configured defaults.
     resultsFormat: ConnectionOptionsSchema.shape.resultsFormat.default(
       ResultsFormat.ARROW,
     ),

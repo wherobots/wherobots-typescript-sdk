@@ -127,23 +127,28 @@ export class Connection {
   }
 
   private async establishSession() {
+    // Only send `region` when set; an omitted region lets the API apply the
+    // organization's configured default. `runtimeId` is likewise dropped from
+    // the body below when undefined (JSON.stringify omits undefined values).
+    const sessionParams = new URLSearchParams();
+    if (this.options.region) {
+      sessionParams.set("region", this.options.region);
+    }
+    sessionParams.set("force_new", String(this.options.forceNew));
     const createdSession = await asyncOperationWithRetry(
       (signal) =>
-        this.fetch(
-          `${API_URL}/sql/session?region=${encodeURIComponent(this.options.region)}&force_new=${this.options.forceNew}`,
-          {
-            method: "POST",
-            body: JSON.stringify({
-              runtimeId: this.options.runtime,
-              version: this.options.version,
-              sessionType: this.options.sessionType,
-              shutdownAfterInactiveSeconds:
-                this.options.shutdownAfterInactiveSeconds,
-            }),
-            ...this.fetchOptions,
-            signal: combineAbortSignals(signal, this.fetchOptions.signal),
-          },
-        ),
+        this.fetch(`${API_URL}/sql/session?${sessionParams.toString()}`, {
+          method: "POST",
+          body: JSON.stringify({
+            runtimeId: this.options.runtime,
+            version: this.options.version,
+            sessionType: this.options.sessionType,
+            shutdownAfterInactiveSeconds:
+              this.options.shutdownAfterInactiveSeconds,
+          }),
+          ...this.fetchOptions,
+          signal: combineAbortSignals(signal, this.fetchOptions.signal),
+        }),
       {
         retryOn: shouldRetryForResiliency,
         retryDelay: backoffRetry,

@@ -91,7 +91,13 @@ Running this example returns the results of the query as JSON:
 
 ### Runtime and region selection
 
-Select your desired Wherobots runtime using the runtime parameter and specifying a runtime enum value.
+Both `runtime` and `region` are optional and accept either a `Runtime`/`Region`
+enum value (handy for autocomplete) or a plain string. Strings are passed to the
+API as-is, so new or BYOC regions (e.g. `region: "byoc-acme-us-east-1"`) work
+without an SDK upgrade. **When omitted, your organization's configured default
+runtime and region are used** — only set them to override that default with a
+specific runtime/region.
+
 See the [Wherobots product documentation](https://docs.wherobots.com) for guidance on runtime sizing and selection.
 
 ### Additional parameters to `connect()`
@@ -136,8 +142,10 @@ The `Connection.connect()` function can take the following additional options:
   convenient for human inspection while still being usable by
   geospatial data manipulation libraries.
 
-- `region`: You must also specify in which region your SQL session should execute
-  into. Wherobots Cloud supports the following compute regions:
+- `region`: the region your SQL session should execute in. Optional — when
+  omitted, your organization's configured default region is used. Accepts a
+  `Region` enum value or any string (BYOC regions included). Wherobots Cloud's
+  built-in compute regions are:
   - `aws-us-east-1`: AWS US East 1 (N. Virginia)
   - `aws-us-east-2`: AWS US East 2 (Ohio)
   - `aws-us-west-2`: AWS US West 2 (Oregon)

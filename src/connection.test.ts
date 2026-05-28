@@ -172,13 +172,55 @@ describe("Connection.connect, when passed connection options", () => {
     const connection = Connection.connect(
       {
         apiKey: testApiKey,
-        runtime: "invalid" as unknown as Runtime,
+        // A non-string runtime is still invalid (region/runtime now accept
+        // any string, but not arbitrary types).
+        runtime: 123 as unknown as Runtime,
       },
       testHarness,
     );
     vi.runAllTimersAsync();
     await expect(connection).rejects.toBeInstanceOf(Error);
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  test("passes raw region/runtime strings through (e.g. BYOC)", async () => {
+    simulateImmediatelyReadySession(fetchMock);
+    simulateImmediatelyOpenSocket(MockWebSocket);
+    const connection = Connection.connect(
+      {
+        apiKey: testApiKey,
+        runtime: "x-large",
+        region: "byoc-acme-us-east-1",
+      },
+      { ...testHarness },
+    );
+    vi.runAllTimersAsync();
+    await connection;
+    const createCall = fetchMock.mock.calls.find(
+      (call) => call[1]?.method === "POST",
+    );
+    expect(createCall?.[0]).toContain("region=byoc-acme-us-east-1");
+    const body = JSON.parse(createCall?.[1]?.body as string);
+    expect(body.runtimeId).toBe("x-large");
+  });
+
+  test("omits region and runtime when not provided", async () => {
+    simulateImmediatelyReadySession(fetchMock);
+    simulateImmediatelyOpenSocket(MockWebSocket);
+    const connection = Connection.connect(
+      {
+        apiKey: testApiKey,
+      },
+      { ...testHarness },
+    );
+    vi.runAllTimersAsync();
+    await connection;
+    const createCall = fetchMock.mock.calls.find(
+      (call) => call[1]?.method === "POST",
+    );
+    expect(createCall?.[0]).not.toContain("region=");
+    const body = JSON.parse(createCall?.[1]?.body as string);
+    expect(body.runtimeId).toBeUndefined();
   });
 
   test("defaults to 'single' session type", async () => {
