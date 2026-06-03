@@ -21,7 +21,7 @@ const ConnectionOptionsSchema = z.object({
   // Exactly one of `token` / `apiKey` must be provided. In the browser, prefer
   // `token`: it authenticates the REST calls, while the session WebSocket relies
   // on the ambient `wherobotsToken` cookie.
-  token: z.string().min(1).optional(),
+  token: z.string().min(1).max(8192).optional(),
   // Override the API origin. Defaults to the WHEROBOTS_API_URL env var (Node)
   // or https://api.cloud.wherobots.com. Must be set explicitly in the browser
   // only when targeting a non-default environment.

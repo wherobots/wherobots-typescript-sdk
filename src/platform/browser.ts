@@ -11,15 +11,24 @@ import {
 // In the browser the native WebSocket cannot set request headers, so auth on
 // the upgrade relies on the ambient `wherobotsToken` cookie (sent automatically
 // because the page origin and the session host share the registrable domain).
-// The auth argument is therefore unused here, but kept for interface parity.
-const openSocket = (url: string, _auth: AuthCredentials): SocketLike => {
-  void _auth;
+const openSocket = (url: string, auth: AuthCredentials): SocketLike => {
+  // An API key can't authenticate the browser WebSocket (no headers, and the
+  // edge cookie path expects the session token). Warn loudly so api-key-only
+  // consumers know to use `token` + the wherobotsToken cookie instead.
+  if (auth.apiKey && !auth.token) {
+    console.warn(
+      "[wherobots-sql-driver] apiKey cannot authenticate the WebSocket in the browser; " +
+        "the connection relies on the wherobotsToken cookie. Use `token` for REST auth.",
+    );
+  }
   const ws = new WebSocket(url);
   ws.binaryType = "arraybuffer";
   return adaptSocket(ws);
 };
 
 const gunzipStream = async (payload: Uint8Array): Promise<Uint8Array> => {
+  // The cast is required: TS's BlobPart wants Uint8Array<ArrayBuffer>, but our
+  // payloads are the wider Uint8Array<ArrayBufferLike>. Safe at runtime.
   const stream = new Blob([payload as unknown as BlobPart])
     .stream()
     .pipeThrough(new DecompressionStream("gzip"));

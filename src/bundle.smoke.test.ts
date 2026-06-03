@@ -1,6 +1,6 @@
 import * as esbuild from "esbuild";
 import path from "path";
-import { describe, expect, test } from "vitest";
+import { beforeAll, describe, expect, test } from "vitest";
 
 const ROOT = path.resolve(__dirname, "..");
 
@@ -43,9 +43,15 @@ describe("browser bundle is free of Node-only references", () => {
     "__dirname",
   ];
 
-  test.each(FORBIDDEN)("does not reference %s", async (token) => {
-    const code = await bundleFor("browser");
-    expect(code).not.toContain(token);
+  // Bundle once and assert against the shared output (a fresh esbuild per
+  // assertion would be needlessly slow).
+  let browserBundle: string;
+  beforeAll(async () => {
+    browserBundle = await bundleFor("browser");
+  });
+
+  test.each(FORBIDDEN)("does not reference %s", (token) => {
+    expect(browserBundle).not.toContain(token);
   });
 });
 

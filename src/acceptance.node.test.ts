@@ -75,4 +75,14 @@ describe("Node acceptance (end-to-end against the mock session server)", () => {
     expect(rows).toEqual(EXPECTED_SHOW_SCHEMAS_ROWS);
     expect(server.retrieveRequests[0]?.compression).toBe(DataCompression.GZIP);
   });
+
+  test("can request and decode uncompressed (none) results", async () => {
+    const rows = await runQuery({
+      token: "test-bearer",
+      dataCompression: DataCompression.NONE,
+    });
+
+    expect(rows).toEqual(EXPECTED_SHOW_SCHEMAS_ROWS);
+    expect(server.retrieveRequests[0]?.compression).toBe(DataCompression.NONE);
+  });
 });

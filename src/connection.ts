@@ -421,10 +421,16 @@ export class Connection {
           abortSignal.removeEventListener("abort", handleSignalAborted);
           resolve(data);
         } catch (err) {
-          // ignore the message if it doesn't match the schema
-          // note that this could be because "status" is "failed",
-          // but this is ok to ignore because a dedicated error event
-          // will also be sent
+          // A schema mismatch is expected and ignored: the message may be for a
+          // different schema, or "status" may be "failed" (a dedicated error
+          // event is also sent in that case). Anything else (e.g. a binary
+          // decode failure in toBytes/decodeCbor) is unexpected, so surface it
+          // at debug level rather than swallowing it entirely.
+          if (!(err instanceof z.ZodError)) {
+            logger
+              .child({ executionId, error: (err as Error)?.message })
+              .debug("Failed to handle WebSocket message");
+          }
         }
       };
       const cleanup = this.addWsListener("message", handleMessage);
@@ -452,7 +458,7 @@ export class Connection {
 
   private onWsClose(e: SocketEventMap["close"]) {
     logger
-      .child({ wasClean: e, code: e.code, reason: e.code })
+      .child({ code: e.code, reason: e.reason })
       .error("Web Socket closed unexpectedly");
     this.close();
   }
