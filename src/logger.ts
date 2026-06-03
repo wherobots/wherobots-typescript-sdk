@@ -1,25 +1,20 @@
-import pino from "pino";
-import pinoPretty from "pino-pretty";
+import { platform } from "@platform";
+import { Logger } from "./platform/types";
 import { SessionReponse } from "./schemas";
 
-const shouldUseDebugLogging = (process.env["NODE_DEBUG"] || "")
+const shouldUseDebugLogging = (platform.getEnv("NODE_DEBUG") || "")
   .split(",")
   .includes("wherobots-sql-driver");
 
-const logger = pino(
-  {
-    name: "wherobots-sql-driver",
-    level: shouldUseDebugLogging ? "debug" : "info",
-    enabled: process.env["NODE_ENV"] !== "test",
-  },
-  pinoPretty(),
-);
+const logger: Logger = platform.createLogger({
+  name: "wherobots-sql-driver",
+  debug: shouldUseDebugLogging,
+  enabled: platform.getEnv("NODE_ENV") !== "test",
+});
 
 export default logger;
 
-export const sessionContextLogger = (
-  session: SessionReponse,
-): typeof logger => {
+export const sessionContextLogger = (session: SessionReponse): Logger => {
   const { id, status, traces, message, appMeta } = session;
   const context = Object.fromEntries(
     Object.entries({

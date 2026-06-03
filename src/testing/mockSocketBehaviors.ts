@@ -1,4 +1,4 @@
-import { encode } from "cbor";
+import { encode } from "cbor-x";
 import { readFileSync } from "fs";
 import { resolve } from "path";
 import WebSocket from "ws";
@@ -18,12 +18,12 @@ import {
   ResultsFormat,
 } from "@/constants";
 
-const showSchemasPayloadBrotli = readFileSync(
-  resolve(__dirname, "./payloads/showSchemas.br"),
+const showSchemasPayloadBrotli = new Uint8Array(
+  readFileSync(resolve(__dirname, "./payloads/showSchemas.br")),
 );
 
-const showTablesPayloadBrotli = readFileSync(
-  resolve(__dirname, "./payloads/showTables.br"),
+const showTablesPayloadBrotli = new Uint8Array(
+  readFileSync(resolve(__dirname, "./payloads/showTables.br")),
 );
 
 type MockWebSocket = MockedFunction<
@@ -123,8 +123,8 @@ const simulateExecutionError = (
 const simulateExecutionResult = (
   socketInstance: ReturnType<MockWebSocket>,
   sentData: string,
-  result: Partial<ExecutionResultEvent["results"]> & {
-    result_bytes: Buffer;
+  result: Partial<Omit<ExecutionResultEvent["results"], "result_bytes">> & {
+    result_bytes: Uint8Array;
   },
   options?: { delay: number },
 ) => {

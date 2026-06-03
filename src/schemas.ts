@@ -17,6 +17,15 @@ const apiKeySchema = z.string().min(1).max(255);
 
 const ConnectionOptionsSchema = z.object({
   apiKey: apiKeySchema.optional(),
+  // A bearer token (e.g. a WorkOS access token) used instead of an API key.
+  // Exactly one of `token` / `apiKey` must be provided. In the browser, prefer
+  // `token`: it authenticates the REST calls, while the session WebSocket relies
+  // on the ambient `wherobotsToken` cookie.
+  token: z.string().min(1).optional(),
+  // Override the API origin. Defaults to the WHEROBOTS_API_URL env var (Node)
+  // or https://api.cloud.wherobots.com. Must be set explicitly in the browser
+  // only when targeting a non-default environment.
+  apiUrl: z.string().url().optional(),
   // Accepts any non-empty string; `Runtime` enum values are passed through as-is.
   // When omitted, the org's default runtime is used.
   runtime: z
@@ -38,7 +47,9 @@ const ConnectionOptionsSchema = z.object({
     .optional(),
   version: z.string().nullable().optional(),
   resultsFormat: z.literal(ResultsFormat.ARROW).optional(),
-  dataCompression: z.literal(DataCompression.BROTLI).optional(),
+  // Result compression to request from the server. When omitted, the platform
+  // default is used (brotli in Node, gzip in the browser).
+  dataCompression: z.nativeEnum(DataCompression).optional(),
   geometryRepresentation: z.nativeEnum(GeometryRepresentation).optional(),
   sessionType: z.nativeEnum(SessionType).optional(),
   forceNew: z.boolean().optional(),
@@ -48,18 +59,16 @@ const ConnectionOptionsSchema = z.object({
 export type ConnectionOptions = z.infer<typeof ConnectionOptionsSchema>;
 
 // A normalized extension to the ConnectionOptionsSchema that fills in defaults
-// for all optional fields
+// for all optional fields. `apiKey`/`token` stay optional here; exactly one is
+// required, enforced by the refinement below. `dataCompression` stays optional
+// so the connection can fall back to the platform default.
 export const ConnectionOptionsSchemaNormalized = ConnectionOptionsSchema.extend(
   {
-    apiKey: apiKeySchema,
     // No region/runtime default: when the consumer omits them they stay
     // undefined and are dropped from the request so the API applies the
     // organization's configured defaults.
     resultsFormat: ConnectionOptionsSchema.shape.resultsFormat.default(
       ResultsFormat.ARROW,
-    ),
-    dataCompression: ConnectionOptionsSchema.shape.dataCompression.default(
-      DataCompression.BROTLI,
     ),
     geometryRepresentation:
       ConnectionOptionsSchema.shape.geometryRepresentation.default(
@@ -70,7 +79,14 @@ export const ConnectionOptionsSchemaNormalized = ConnectionOptionsSchema.extend(
     ),
     forceNew: ConnectionOptionsSchema.shape.forceNew.default(false),
   },
-);
+).superRefine((options, ctx) => {
+  if (Boolean(options.token) === Boolean(options.apiKey)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Exactly one of `token` or `apiKey` is required",
+    });
+  }
+});
 
 export type ConnectionOptionsNormalized = z.infer<
   typeof ConnectionOptionsSchemaNormalized
@@ -115,6 +131,7 @@ export const RetrieveResultsEventSchema = z.object({
   kind: z.literal("retrieve_results"),
   execution_id: ExecutionIdSchema,
   geometry: z.nativeEnum(GeometryRepresentation),
+  compression: z.nativeEnum(DataCompression),
 });
 
 export type RetrieveResultsEvent = z.infer<typeof RetrieveResultsEventSchema>;
@@ -141,7 +158,12 @@ export const ExecutionResultEventSchema = EventWithExecutionIdSchema.extend({
   kind: z.literal("execution_result"),
   state: z.literal("succeeded"),
   results: z.object({
-    result_bytes: z.instanceof(Buffer),
+    // Binary frames decode to a Uint8Array. Using z.custom (rather than
+    // z.instanceof) keeps the inferred type the permissive `Uint8Array` so a
+    // Node Buffer (Uint8Array<ArrayBufferLike>) is accepted as well.
+    result_bytes: z.custom<Uint8Array>((val) => val instanceof Uint8Array, {
+      message: "Expected binary result bytes",
+    }),
     compression: z.nativeEnum(DataCompression),
     format: z.nativeEnum(ResultsFormat),
     geometry: z.nativeEnum(GeometryRepresentation),

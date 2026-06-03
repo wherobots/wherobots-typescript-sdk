@@ -42,6 +42,7 @@ import {
   simulateExecutionResult,
 } from "./testing/mockSocketBehaviors";
 import { NUM_RESLIENCY_RETRIES } from "./api-utils";
+import { OpenSocket } from "./platform/types";
 
 // unfortunately, AbortController.timeout functionality can't be mocked using
 // vitest fake timers, so we have to replace it with an equivalent implementation
@@ -71,8 +72,8 @@ const showTablesExpectedPayload = JSON.parse(
   }),
 );
 
-const showSchemasPayloadBrotli = readFileSync(
-  resolve(__dirname, "./testing/payloads/showSchemas.br"),
+const showSchemasPayloadBrotli = new Uint8Array(
+  readFileSync(resolve(__dirname, "./testing/payloads/showSchemas.br")),
 );
 
 const fetchMock = fetchMockBuilder(vi);
@@ -80,8 +81,10 @@ const MockWebSocket = createMockWebSocket();
 
 const testHarness = {
   fetch: fetchMock as unknown as typeof fetch,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  WebSocket: MockWebSocket as any,
+  // The connection opens sockets through `openSocket`; route it to the mock
+  // constructor so the existing simulate* helpers (which inspect the mock's
+  // calls/results) keep working unchanged.
+  openSocket: (() => MockWebSocket()) as unknown as OpenSocket,
 };
 const testApiKey = "12345678-1234-1234-1234-123456789ab";
 const expectCorrectApiKey = () => {
