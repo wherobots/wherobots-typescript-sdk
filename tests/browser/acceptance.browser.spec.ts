@@ -100,3 +100,31 @@ test("browser end-to-end: native WebSocket + cookie auth + gzip decode", async (
   expect(server.retrieveRequests).toHaveLength(1);
   expect(server.retrieveRequests[0]?.compression).toBe(DataCompression.GZIP);
 });
+
+test("browser end-to-end: API key via ?token= query param on the WS", async ({
+  page,
+}) => {
+  // No cookie this time. An API key authenticates the browser WS by riding in
+  // the ?token= query param (which goproxy validates as an X-API-Key), since
+  // the native WebSocket can't send the X-API-Key header.
+  await page.goto(server.apiUrl);
+  await page.waitForFunction(() => typeof window.runQuery === "function");
+
+  const rows = await page.evaluate(
+    ({ apiUrl }) =>
+      window.runQuery({
+        apiUrl,
+        apiKey: "browser-api-key",
+        statement: "SHOW SCHEMAS IN wherobots_open_data",
+      }),
+    { apiUrl: server.apiUrl },
+  );
+
+  expect(rows).toEqual(EXPECTED_SHOW_SCHEMAS_ROWS);
+  // The API key reached the WS upgrade as the ?token= query param (no header).
+  expect(server.wsAuth.queryToken).toBe("browser-api-key");
+  expect(server.wsAuth.authorization).toBeUndefined();
+  expect(server.wsAuth.apiKey).toBeUndefined();
+  // REST authenticated with the X-API-Key header.
+  expect(server.restAuth.apiKey).toBe("browser-api-key");
+});

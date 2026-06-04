@@ -44,6 +44,9 @@ export interface CapturedAuth {
   authorization?: string | undefined;
   apiKey?: string | undefined;
   cookie?: string | undefined;
+  // The `?token=` query param on the WS upgrade (goproxy validates it as an
+  // X-API-Key); only captured for the WebSocket.
+  queryToken?: string | undefined;
 }
 
 export interface MockSessionServer {
@@ -140,7 +143,11 @@ export const startMockSessionServer = async (
 
   const wss = new WebSocketServer({ server });
   wss.on("connection", (socket, req) => {
-    Object.assign(wsAuth, captureAuth(req.headers));
+    Object.assign(wsAuth, captureAuth(req.headers), {
+      queryToken:
+        new URL(req.url ?? "/", "http://127.0.0.1").searchParams.get("token") ??
+        undefined,
+    });
     socket.on("message", (data) => {
       const message = JSON.parse(data.toString());
       if (message.kind === "execute_sql") {

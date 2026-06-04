@@ -2,19 +2,22 @@ import { DataCompression } from "../constants";
 import { AuthCredentials, Logger, LoggerOptions, Platform } from "./types";
 
 // In the browser the native WebSocket cannot set request headers, so auth on
-// the upgrade relies on the ambient `wherobotsToken` cookie (sent automatically
-// because the page origin and the session host share the registrable domain).
+// the upgrade uses one of the two header-free channels the edge (goproxy)
+// accepts:
+//   - a bearer/session token via the ambient `wherobotsToken` cookie (sent
+//     automatically because the page origin and the session host share the
+//     registrable domain), or
+//   - an API key via the `?token=` query param, which goproxy validates as an
+//     X-API-Key. This requires the EnableTokenQueryParamGoproxy flag, and the
+//     key is visible in the URL (and thus proxy/access logs), so prefer a
+//     short-lived token + cookie when possible.
 const openSocket = (url: string, auth: AuthCredentials): WebSocket => {
-  // An API key can't authenticate the browser WebSocket (no headers, and the
-  // edge cookie path expects the session token). Warn loudly so api-key-only
-  // consumers know to use `token` + the wherobotsToken cookie instead.
-  if (auth.apiKey && !auth.token) {
-    console.warn(
-      "[wherobots-sql-driver] apiKey cannot authenticate the WebSocket in the browser; " +
-        "the connection relies on the wherobotsToken cookie. Use `token` for REST auth.",
-    );
+  let socketUrl = url;
+  if (auth.apiKey) {
+    const separator = socketUrl.includes("?") ? "&" : "?";
+    socketUrl += `${separator}token=${encodeURIComponent(auth.apiKey)}`;
   }
-  const ws = new WebSocket(url);
+  const ws = new WebSocket(socketUrl);
   ws.binaryType = "arraybuffer";
   return ws;
 };

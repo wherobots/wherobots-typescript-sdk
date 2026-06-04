@@ -8,16 +8,17 @@ declare global {
   interface Window {
     runQuery: (opts: {
       apiUrl: string;
-      token: string;
+      token?: string;
+      apiKey?: string;
       statement: string;
     }) => Promise<unknown>;
     runQueryError?: string;
   }
 }
 
-window.runQuery = async ({ apiUrl, token, statement }) => {
+window.runQuery = async ({ apiUrl, token, apiKey, statement }) => {
   try {
-    const connection = await Connection.connect({ token, apiUrl });
+    const connection = await Connection.connect({ token, apiKey, apiUrl });
     const table = await connection.execute(statement);
     const rows = table.toArray().map((row) => row.toJSON());
     connection.close();

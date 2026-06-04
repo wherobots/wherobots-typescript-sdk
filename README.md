@@ -112,9 +112,17 @@ The SDK runs unchanged in the browser. Two environment differences are handled
 automatically:
 
 - **WebSocket authentication.** Browsers cannot set headers on a WebSocket, so
-  the session socket relies on the `wherobotsToken` cookie, which the browser
-  sends automatically when the page and the Wherobots session host share the
-  `wherobots.com` registrable domain. Pass `token` for the REST calls as usual.
+  the session socket authenticates one of two header-free ways:
+  - with a `token` (bearer/session), via the `wherobotsToken` cookie, which the
+    browser sends automatically when the page and the Wherobots session host
+    share the `wherobots.com` registrable domain (recommended); or
+  - with an `apiKey`, via a `?token=` query param on the socket URL (the edge
+    validates it as an X-API-Key). This requires the `EnableTokenQueryParamGoproxy`
+    flag, and the key is visible in the URL/logs — prefer a short-lived `token`
+    when possible, and avoid shipping a long-lived API key to untrusted clients.
+
+  REST calls use the matching header (`Authorization: Bearer` or `X-API-Key`) in
+  all environments.
 - **Compression.** Browsers have no brotli support, so the browser build
   requests and decodes **gzip** results (via the native `DecompressionStream`),
   while Node uses brotli. Override with `dataCompression` if needed.
