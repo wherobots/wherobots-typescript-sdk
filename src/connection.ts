@@ -4,14 +4,9 @@ import { Table, TypeMap } from "apache-arrow";
 import z from "zod";
 import { platform } from "@platform";
 import logger, { sessionContextLogger } from "./logger";
-import {
-  OpenSocket,
-  SocketEventMap,
-  SocketEventName,
-  SocketLike,
-  SocketListenerOptions,
-  SocketMessageData,
-} from "./platform/types";
+import { getEnv } from "./platform/env";
+import { OpenSocket } from "./platform/types";
+import { PACKAGE_NAME, PACKAGE_VERSION } from "./version";
 import { DataCompression } from "./constants";
 import {
   CancelExecutionEvent,
@@ -56,7 +51,7 @@ type ExecuteOptions = {
 // Normalize a WebSocket message payload to a Uint8Array across platforms:
 // Node `ws` delivers a Buffer or Buffer[]; a browser native socket with
 // binaryType="arraybuffer" delivers an ArrayBuffer (Blob is handled defensively).
-const toBytes = async (data: SocketMessageData): Promise<Uint8Array> => {
+const toBytes = async (data: unknown): Promise<Uint8Array> => {
   if (data instanceof Uint8Array) {
     return data;
   }
@@ -104,10 +99,10 @@ export class Connection {
   private apiUrl: string;
   private compression: DataCompression;
   private openSocket: OpenSocket;
-  private ws: SocketLike | null = null;
+  private ws: WebSocket | null = null;
   private protocolVersion: string;
   private wsListeners: {
-    name: SocketEventName;
+    name: keyof WebSocketEventMap;
     // for purposes of tracking and automatically cleaning up listeners,
     // we don't care about the event type argument to the listener
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -121,7 +116,7 @@ export class Connection {
     // collides with an ambient API key.
     const merged: ConnectionOptions = { ...options };
     if (!merged.apiKey && !merged.token) {
-      const envApiKey = platform.getEnv("WHEROBOTS_API_KEY");
+      const envApiKey = getEnv("WHEROBOTS_API_KEY");
       if (envApiKey) {
         merged.apiKey = envApiKey;
       }
@@ -129,15 +124,17 @@ export class Connection {
     this.options = ConnectionOptionsSchemaNormalized.parse(merged);
 
     this.apiUrl =
-      this.options.apiUrl ||
-      platform.getEnv("WHEROBOTS_API_URL") ||
-      DEFAULT_API_URL;
+      this.options.apiUrl || getEnv("WHEROBOTS_API_URL") || DEFAULT_API_URL;
     this.compression =
       this.options.dataCompression ?? platform.defaultCompression;
 
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
       "Cache-Control": "no-store",
+      // Identifies the SDK on both platforms; a custom header is used because
+      // browsers drop a JS-set User-Agent. The richer User-Agent below is
+      // added only where the runtime allows it (Node).
+      "X-Wherobots-Client": `${PACKAGE_NAME}/${PACKAGE_VERSION}`,
     };
     if (this.options.token) {
       headers["Authorization"] = `Bearer ${this.options.token}`;
@@ -272,7 +269,7 @@ export class Connection {
   // returning a Promise that either resolves to a socket instance
   // if the connection is opened succesfully, or rejects if the connection
   // fails, is closed remotely, or is aborted due to a timeout
-  private openWebSocket(url: string, signal: AbortSignal): Promise<SocketLike> {
+  private openWebSocket(url: string, signal: AbortSignal): Promise<WebSocket> {
     return new Promise((resolve, reject) => {
       const onAbort = (e: Event) => {
         reject(new Error(e.type));
@@ -284,9 +281,7 @@ export class Connection {
         cleanup();
         resolve(ws);
       };
-      const onSocketFail = (
-        e: SocketEventMap["error"] | SocketEventMap["close"],
-      ) => {
+      const onSocketFail = (e: Event) => {
         cleanup(true);
         reject(new Error(e.type));
       };
@@ -388,7 +383,7 @@ export class Connection {
         return;
       }
 
-      const handleMessage = async (e: SocketEventMap["message"]) => {
+      const handleMessage = async (e: MessageEvent) => {
         try {
           let toParse: unknown;
           if (typeof e.data === "string") {
@@ -437,10 +432,10 @@ export class Connection {
     });
   }
 
-  private addWsListener<E extends SocketEventName>(
+  private addWsListener<E extends keyof WebSocketEventMap>(
     name: E,
-    listener: (e: SocketEventMap[E]) => void,
-    options?: SocketListenerOptions,
+    listener: (e: WebSocketEventMap[E]) => void,
+    options?: AddEventListenerOptions,
   ) {
     if (!this.ws) {
       throw new Error("WebSocket is not open");
@@ -451,12 +446,14 @@ export class Connection {
     return () => this.ws?.removeEventListener(name, boundListener);
   }
 
-  private onWsError(e: SocketEventMap["error"]) {
-    logger.child({ message: e.message }).error("Web Socket error");
+  private onWsError(e: Event) {
+    logger
+      .child({ message: (e as ErrorEvent).message })
+      .error("Web Socket error");
     this.close();
   }
 
-  private onWsClose(e: SocketEventMap["close"]) {
+  private onWsClose(e: CloseEvent) {
     logger
       .child({ code: e.code, reason: e.reason })
       .error("Web Socket closed unexpectedly");

@@ -1,18 +1,11 @@
 import zlib from "zlib";
 import { promisify } from "util";
-import WebSocket from "ws";
+import WsWebSocket from "ws";
 import pino from "pino";
 import pinoPretty from "pino-pretty";
 import { DataCompression } from "../constants";
-import { adaptSocket } from "./socketAdapter";
-import {
-  AuthCredentials,
-  Logger,
-  LoggerOptions,
-  Platform,
-  SocketLike,
-} from "./types";
-import pkg from "../../package.json";
+import { AuthCredentials, Logger, LoggerOptions, Platform } from "./types";
+import { PACKAGE_NAME, PACKAGE_VERSION } from "../version";
 
 const brotliDecompress = promisify(zlib.brotliDecompress);
 const gunzip = promisify(zlib.gunzip);
@@ -27,12 +20,13 @@ const authHeaders = (auth: AuthCredentials): Record<string, string> => {
   return {};
 };
 
-const openSocket = (url: string, auth: AuthCredentials): SocketLike => {
-  const ws = new WebSocket(url, {
+const openSocket = (url: string, auth: AuthCredentials): WebSocket => {
+  // The `ws` socket implements the DOM WebSocket interface; the cast lets the
+  // rest of the SDK treat it identically to the browser's native WebSocket.
+  return new WsWebSocket(url, {
     headers: authHeaders(auth),
     perMessageDeflate: false,
-  });
-  return adaptSocket(ws as unknown as Parameters<typeof adaptSocket>[0]);
+  }) as unknown as WebSocket;
 };
 
 const decompress = async (
@@ -76,9 +70,8 @@ const createLogger = (options: LoggerOptions): Logger =>
 export const platform: Platform = {
   openSocket,
   decompress,
-  getEnv: (name) => process.env[name],
   userAgent: () =>
-    `${pkg.name}/${pkg.version} os/${process.platform};${process.arch} node/${process.version}`,
+    `${PACKAGE_NAME}/${PACKAGE_VERSION} os/${process.platform};${process.arch} node/${process.version}`,
   defaultCompression: DataCompression.BROTLI,
   createLogger,
 };

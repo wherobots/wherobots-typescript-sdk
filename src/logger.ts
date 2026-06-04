@@ -1,15 +1,16 @@
 import { platform } from "@platform";
+import { getEnv } from "./platform/env";
 import { Logger } from "./platform/types";
 import { SessionReponse } from "./schemas";
 
-const shouldUseDebugLogging = (platform.getEnv("NODE_DEBUG") || "")
+const shouldUseDebugLogging = (getEnv("NODE_DEBUG") || "")
   .split(",")
   .includes("wherobots-sql-driver");
 
 const logger: Logger = platform.createLogger({
   name: "wherobots-sql-driver",
   debug: shouldUseDebugLogging,
-  enabled: platform.getEnv("NODE_ENV") !== "test",
+  enabled: getEnv("NODE_ENV") !== "test",
 });
 
 export default logger;

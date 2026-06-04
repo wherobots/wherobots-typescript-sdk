@@ -32,12 +32,15 @@ const bundleFor = async (platform: "node" | "browser"): Promise<string> => {
 };
 
 describe("browser bundle is free of Node-only references", () => {
+  // Note: a guarded `process.env` (behind `typeof process`) is intentionally
+  // present via the shared getEnv helper and is safe in the browser, so it is
+  // not forbidden. These tokens would indicate a Node-only dependency or an
+  // unguarded Node API leaking into the browser build.
   const FORBIDDEN = [
     '"ws"',
     "pino-pretty",
     "read-pkg-up",
     "zlib",
-    "process.env",
     "process.platform",
     "process.version",
     "__dirname",

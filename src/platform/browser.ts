@@ -1,17 +1,10 @@
 import { DataCompression } from "../constants";
-import { adaptSocket } from "./socketAdapter";
-import {
-  AuthCredentials,
-  Logger,
-  LoggerOptions,
-  Platform,
-  SocketLike,
-} from "./types";
+import { AuthCredentials, Logger, LoggerOptions, Platform } from "./types";
 
 // In the browser the native WebSocket cannot set request headers, so auth on
 // the upgrade relies on the ambient `wherobotsToken` cookie (sent automatically
 // because the page origin and the session host share the registrable domain).
-const openSocket = (url: string, auth: AuthCredentials): SocketLike => {
+const openSocket = (url: string, auth: AuthCredentials): WebSocket => {
   // An API key can't authenticate the browser WebSocket (no headers, and the
   // edge cookie path expects the session token). Warn loudly so api-key-only
   // consumers know to use `token` + the wherobotsToken cookie instead.
@@ -23,7 +16,7 @@ const openSocket = (url: string, auth: AuthCredentials): SocketLike => {
   }
   const ws = new WebSocket(url);
   ws.binaryType = "arraybuffer";
-  return adaptSocket(ws);
+  return ws;
 };
 
 const gunzipStream = async (payload: Uint8Array): Promise<Uint8Array> => {
@@ -84,10 +77,8 @@ const consoleLogger = (
 export const platform: Platform = {
   openSocket,
   decompress,
-  // Browsers have no environment variables; all configuration must be passed
-  // explicitly to Connection.connect().
-  getEnv: () => undefined,
-  // Browsers forbid overriding the User-Agent request header.
+  // Browsers drop a JS-set User-Agent; the SDK identifies itself via the
+  // X-Wherobots-Client header instead (set by the connection on both platforms).
   userAgent: () => undefined,
   defaultCompression: DataCompression.GZIP,
   createLogger: (options) => consoleLogger(options),
