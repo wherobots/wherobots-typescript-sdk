@@ -127,12 +127,18 @@ export const startMockSessionServer = async (
     // GET /sql/session/{id} -> a READY session pointing the WS back here.
     if (req.method === "GET" && url.pathname.startsWith("/sql/session/")) {
       Object.assign(restAuth, captureAuth(req.headers));
+      // Read the bound port from the server at call time rather than closing
+      // over the `port` const declared after listen() resolves — the handler
+      // can only run once the server is listening, so address() is populated.
+      const address = server.address();
+      const boundPort =
+        address && typeof address !== "string" ? address.port : 0;
       res.writeHead(200, { "Content-Type": "application/json" }).end(
         JSON.stringify({
           id: "test-session",
           status: "READY",
           // http -> ws via the SDK's toWsUrl(); the WS server accepts any path.
-          appMeta: { url: `http://127.0.0.1:${port}` },
+          appMeta: { url: `http://127.0.0.1:${boundPort}` },
         }),
       );
       return;

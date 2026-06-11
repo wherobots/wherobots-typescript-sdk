@@ -1,5 +1,11 @@
 import { DataCompression } from "../constants";
-import { AuthCredentials, Logger, LoggerOptions, Platform } from "./types";
+import {
+  AuthCredentials,
+  Logger,
+  LoggerOptions,
+  Platform,
+  SocketApiSubset,
+} from "./types";
 
 // In the browser the native WebSocket cannot set request headers, so auth on
 // the upgrade uses one of the two header-free channels the edge (goproxy)
@@ -11,7 +17,7 @@ import { AuthCredentials, Logger, LoggerOptions, Platform } from "./types";
 //     X-API-Key. This requires the EnableTokenQueryParamGoproxy flag, and the
 //     key is visible in the URL (and thus proxy/access logs), so prefer a
 //     short-lived token + cookie when possible.
-const openSocket = (url: string, auth: AuthCredentials): WebSocket => {
+const openSocket = (url: string, auth: AuthCredentials): SocketApiSubset => {
   let socketUrl = url;
   if (auth.apiKey) {
     const separator = socketUrl.includes("?") ? "&" : "?";

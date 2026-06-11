@@ -5,7 +5,7 @@ import z from "zod";
 import { platform } from "@platform";
 import logger, { sessionContextLogger } from "./logger";
 import { getEnv } from "./platform/env";
-import { OpenSocket } from "./platform/types";
+import { OpenSocket, SocketApiSubset } from "./platform/types";
 import { PACKAGE_NAME, PACKAGE_VERSION } from "./version";
 import { DataCompression } from "./constants";
 import {
@@ -99,7 +99,7 @@ export class Connection {
   private apiUrl: string;
   private compression: DataCompression;
   private openSocket: OpenSocket;
-  private ws: WebSocket | null = null;
+  private ws: SocketApiSubset | null = null;
   private protocolVersion: string;
   private wsListeners: {
     name: keyof WebSocketEventMap;
@@ -269,7 +269,10 @@ export class Connection {
   // returning a Promise that either resolves to a socket instance
   // if the connection is opened succesfully, or rejects if the connection
   // fails, is closed remotely, or is aborted due to a timeout
-  private openWebSocket(url: string, signal: AbortSignal): Promise<WebSocket> {
+  private openWebSocket(
+    url: string,
+    signal: AbortSignal,
+  ): Promise<SocketApiSubset> {
     return new Promise((resolve, reject) => {
       const onAbort = (e: Event) => {
         reject(new Error(e.type));

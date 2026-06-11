@@ -4,7 +4,13 @@ import WsWebSocket from "ws";
 import pino from "pino";
 import pinoPretty from "pino-pretty";
 import { DataCompression } from "../constants";
-import { AuthCredentials, Logger, LoggerOptions, Platform } from "./types";
+import {
+  AuthCredentials,
+  Logger,
+  LoggerOptions,
+  Platform,
+  SocketApiSubset,
+} from "./types";
 import { PACKAGE_NAME, PACKAGE_VERSION } from "../version";
 
 const brotliDecompress = promisify(zlib.brotliDecompress);
@@ -20,13 +26,16 @@ const authHeaders = (auth: AuthCredentials): Record<string, string> => {
   return {};
 };
 
-const openSocket = (url: string, auth: AuthCredentials): WebSocket => {
-  // The `ws` socket implements the DOM WebSocket interface; the cast lets the
-  // rest of the SDK treat it identically to the browser's native WebSocket.
+const openSocket = (url: string, auth: AuthCredentials): SocketApiSubset => {
+  // `ws` provides send/close/add+removeEventListener but types its event
+  // objects (and `send`'s Blob handling) slightly differently from the DOM, so
+  // a structural assignment isn't possible. The cast targets the narrow
+  // SocketApiSubset — which names exactly the surface the SDK uses — rather
+  // than the full DOM WebSocket, so it stays auditable.
   return new WsWebSocket(url, {
     headers: authHeaders(auth),
     perMessageDeflate: false,
-  }) as unknown as WebSocket;
+  }) as unknown as SocketApiSubset;
 };
 
 const decompress = async (
