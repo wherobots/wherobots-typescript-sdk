@@ -9,8 +9,12 @@
     "declaration": true,
     "resolveJsonModule": true,
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@platform": ["./src/platform/node.ts"]
     },
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2023", "ESNext.Disposable", "DOM", "DOM.Iterable"],
     "outDir": "./dist"
   },
   "include": ["**/*.ts", "**/*.mts"],

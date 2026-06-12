@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.11.0
+
+### Added
+
+- Browser support: the SDK now ships a dual Node/browser build and can run in the
+  browser, authenticating the session WebSocket via the ambient cookie or an
+  API key query param.
+
 ## 0.3.0
 
 ### Changed

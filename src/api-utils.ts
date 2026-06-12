@@ -1,7 +1,6 @@
-import zlib from "zlib";
 import z, { ZodRawShape } from "zod";
 import { SessionReponse } from "./schemas";
-import { DataCompression, ResultsFormat, SessionStatus } from "./constants";
+import { ResultsFormat, SessionStatus } from "./constants";
 import logger from "./logger";
 import { tableFromIPC, TypeMap } from "apache-arrow";
 
@@ -132,28 +131,8 @@ export const toWsUrl = (url: string) => {
   return `wss:${url}`;
 };
 
-export const decompressPayload = async (
-  payload: Buffer,
-  compression: DataCompression,
-) => {
-  switch (compression) {
-    case DataCompression.BROTLI:
-      return new Promise<Buffer>((resolve, reject) => {
-        zlib.brotliDecompress(payload, (err, result) => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve(result);
-          }
-        });
-      });
-    default:
-      throw new Error(`Unsupported compression: ${compression}`);
-  }
-};
-
 export const decodeResults = <Schema extends TypeMap>(
-  results: Buffer,
+  results: Uint8Array,
   encoding: ResultsFormat,
 ) => {
   switch (encoding) {

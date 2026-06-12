@@ -37,6 +37,8 @@ export enum ResultsFormat {
 }
 
 export enum DataCompression {
+  NONE = "none",
+  GZIP = "gzip",
   BROTLI = "brotli",
 }
 

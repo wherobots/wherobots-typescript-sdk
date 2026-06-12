@@ -2,17 +2,20 @@
 
 <!-- Note to authors: This content is duplicated from https://github.com/wherobots/documents/blob/source/docs/develop/spatial-sql-api.md#wherobots-sql-driver-typescript-sdk. When making updates here, please mirror them to the other location. -->
 
-This is the TypeScript SDK for interacting with WherobotsDB. This package implements a Node.js
-client that programmatically connects to a WherobotsDB runtime and executes Spatial SQL queries.
+This is the TypeScript SDK for interacting with WherobotsDB. This package implements a
+client that programmatically connects to a WherobotsDB runtime and executes Spatial SQL
+queries. It runs in both **Node.js (18+)** and **modern browsers** from a single package — the
+correct build is selected automatically via the package's `exports` conditions.
 
 ## Prerequisites
 
 The following resources are needed to run the Wherobots SQL Driver's TypeScript SDK:
 
-1. Node.js version 18 or higher
+1. Node.js version 18 or higher, or a modern browser (Chromium/Firefox/Safari 16.4+)
 1. TypeScript version 5.x (if using TypeScript)
-1. A Wherobots API Key. See the [Wherobots API Key Documentation](https://docs.wherobots.com/latest/get-started/api-keys/)
-   for instructions on how to generate a key.
+1. Credentials — either:
+   - A Wherobots API Key (see the [Wherobots API Key Documentation](https://docs.wherobots.com/latest/get-started/api-keys/)), or
+   - A bearer token (e.g. a session access token), passed as `token`.
 
 ## Installation
 
@@ -89,6 +92,44 @@ Running this example returns the results of the query as JSON:
 1. Paste the contents of the above code example into a file called `wherobots-example.ts`
 1. Run the example with: `npx tsx wherobots-example.ts`
 
+### Authentication
+
+Provide **exactly one** of:
+
+- `apiKey`: a Wherobots API key. In Node it also falls back to the
+  `WHEROBOTS_API_KEY` environment variable when neither `apiKey` nor `token` is
+  passed.
+- `token`: a bearer token (e.g. a WorkOS access token). Sent as
+  `Authorization: Bearer <token>` on the REST session calls.
+
+```ts
+const conn = await Connection.connect({ token: "YOUR-BEARER-TOKEN" });
+```
+
+### Browser usage
+
+The SDK runs unchanged in the browser. Two environment differences are handled
+automatically:
+
+- **WebSocket authentication.** Browsers cannot set headers on a WebSocket, so
+  the session socket authenticates one of two header-free ways:
+  - with a `token` (bearer/session), via the `wherobotsToken` cookie, which the
+    browser sends automatically when the page and the Wherobots session host
+    share the `wherobots.com` registrable domain (recommended); or
+  - with an `apiKey`, via a `?token=` query param on the socket URL (the edge
+    validates it as an X-API-Key). This requires the `EnableTokenQueryParamGoproxy`
+    flag, and the key is visible in the URL/logs — prefer a short-lived `token`
+    when possible, and avoid shipping a long-lived API key to untrusted clients.
+
+  REST calls use the matching header (`Authorization: Bearer` or `X-API-Key`) in
+  all environments.
+- **Compression.** Browsers have no brotli support, so the browser build
+  requests and decodes **gzip** results (via the native `DecompressionStream`),
+  while Node uses brotli. Override with `dataCompression` if needed.
+
+In the browser, environment variables are unavailable, so pass `apiUrl`
+explicitly if you need to target a non-default API origin.
+
 ### Runtime and region selection
 
 Both `runtime` and `region` are optional and accept either a `Runtime`/`Region`
@@ -130,11 +171,10 @@ The `Connection.connect()` function can take the following additional options:
 
   - NOTE: currently only Arrow encoding is supported
 
-- `dataCompression`: one of the `DataCompression` enum values; Brotli
-  compression is the default and the most efficient compression
-  algorithm for receiving query results.
-
-  - NOTE: currently only Brotli compression is supported
+- `dataCompression`: one of the `DataCompression` enum values
+  (`brotli`, `gzip`, or `none`) for receiving query results. When omitted, the
+  platform default is used: **brotli** in Node (most efficient) and **gzip** in
+  the browser (the only algorithm browsers can natively decompress).
 
 - `geometryRepresentation`: one of the `GeometryRepresentation` enum
   values; selects the encoding of geometry columns returned to the
