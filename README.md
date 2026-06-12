@@ -113,6 +113,7 @@ automatically:
 
 - **WebSocket authentication.** Browsers cannot set headers on a WebSocket, so
   the session socket authenticates one of two header-free ways:
+
   - with a `token` (bearer/session), via the `wherobotsToken` cookie, which the
     browser sends automatically when the page and the Wherobots session host
     share the `wherobots.com` registrable domain (recommended); or
@@ -123,6 +124,7 @@ automatically:
 
   REST calls use the matching header (`Authorization: Bearer` or `X-API-Key`) in
   all environments.
+
 - **Compression.** Browsers have no brotli support, so the browser build
   requests and decodes **gzip** results (via the native `DecompressionStream`),
   while Node uses brotli. Override with `dataCompression` if needed.
