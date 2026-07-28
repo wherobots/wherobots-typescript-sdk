@@ -1,4 +1,5 @@
 import z from "zod";
+import { MAX_HEADER_BYTES } from "./clientHeader";
 import {
   DataCompression,
   GeometryRepresentation,
@@ -54,6 +55,13 @@ const ConnectionOptionsSchema = z.object({
   sessionType: z.nativeEnum(SessionType).optional(),
   forceNew: z.boolean().optional(),
   shutdownAfterInactiveSeconds: z.number().int().positive().optional(),
+  // An inbound `X-Wherobots-Client` chain to forward. Set this only when the
+  // caller is itself acting on behalf of an upstream Wherobots client (an app
+  // embedding this SDK, a BI integration); the value is sanitized and kept to
+  // the left of this SDK's own hop, so the origin stays leftmost. Attribution
+  // is advisory and never affects auth, so a malformed value costs provenance,
+  // not the request.
+  clientChain: z.string().min(1).max(MAX_HEADER_BYTES).optional(),
 });
 
 export type ConnectionOptions = z.infer<typeof ConnectionOptionsSchema>;

@@ -167,6 +167,14 @@ The `Connection.connect()` function can take the following additional options:
   (optional). This parameter allows for better resource management and cost
   control by automatically terminating idle sessions.
 
+- `clientChain`: an inbound `X-Wherobots-Client` value to forward (optional).
+  The SDK always identifies itself to Wherobots with an advisory
+  `X-Wherobots-Client` attribution header. Set this only if your application is
+  itself acting on behalf of an upstream Wherobots client: the value you pass is
+  kept to the left of the SDK's own hop, so the original caller stays
+  identifiable. The header is used for analytics only and never affects
+  authentication, authorization, or quotas.
+
 - `resultsFormat`: one of the `ResultsFormat` enum values;
   Arrow encoding is the default and most efficient format for
   receiving query results.

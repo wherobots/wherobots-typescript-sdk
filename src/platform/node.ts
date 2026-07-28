@@ -81,6 +81,7 @@ export const platform: Platform = {
   decompress,
   userAgent: () =>
     `${PACKAGE_NAME}/${PACKAGE_VERSION} os/${process.platform};${process.arch} node/${process.version}`,
+  clientPlatform: process.platform,
   defaultCompression: DataCompression.BROTLI,
   createLogger,
 };
