@@ -60,7 +60,8 @@ const ConnectionOptionsSchema = z.object({
   // embedding this SDK, a BI integration); the value is sanitized and kept to
   // the left of this SDK's own hop, so the origin stays leftmost. Attribution
   // is advisory and never affects auth, so a malformed value costs provenance,
-  // not the request.
+  // not the request. The bound here is a coarse guard measured in UTF-16 code
+  // units, not bytes; `clientHeaderValue` enforces the real UTF-8 byte budget.
   clientChain: z.string().min(1).max(MAX_HEADER_BYTES).optional(),
 });
 

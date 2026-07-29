@@ -35,10 +35,12 @@ export const CLIENT_TOKEN = "typescript-sdk";
 // ASCII, so bytes and characters count the same here.
 export const MAX_HEADER_BYTES = 512;
 
-// Individual values are kept under the 64-character bound the header convention
-// places on a client token. The server treats an over-length token as malformed
-// and degrades it to `unknown`, so truncating here is what keeps a long version
-// string from costing us the whole hop.
+// Bounds a single parameter value (`ver`, `plat`). The server's 64-character
+// limit applies to a hop's `client` token, not to its parameters, so an
+// over-length value here costs nothing on its own; the bound exists so one
+// pathological version string cannot eat the header budget and starve upstream
+// hops. `CLIENT_TOKEN` is a short fixed literal and never passes through
+// `sanitizeValue`.
 const MAX_VALUE_CHARS = 63;
 
 const HOP_SEPARATOR = ", ";
