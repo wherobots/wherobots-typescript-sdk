@@ -6,6 +6,7 @@ import { expect, test, describe, vi, beforeEach } from "vitest";
 import fetchMockBuilder, { FetchMock } from "vitest-fetch-mock";
 import WebSocket from "ws";
 import { Connection } from "./connection";
+import { CLIENT_HEADER_NAME, buildHop } from "./clientHeader";
 import { Runtime, SessionType } from "./constants";
 import {
   SESSION_LIFECYCLE_RESPONSES,
@@ -132,6 +133,43 @@ describe("Connection.connect, when passed connection options", () => {
     vi.runAllTimersAsync();
     await expect(connection).resolves.toBeInstanceOf(Connection);
     expectCorrectApiKey();
+  });
+
+  test("identifies itself with a well-formed client-attribution hop", async () => {
+    simulateImmediatelyReadySession(fetchMock);
+    simulateImmediatelyOpenSocket(MockWebSocket);
+    const connection = createConnectionUnderTest();
+    vi.runAllTimersAsync();
+    await connection;
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          [CLIENT_HEADER_NAME]: buildHop(),
+        }),
+      }),
+    );
+  });
+
+  test("keeps a caller-supplied chain to the left of its own hop", async () => {
+    simulateImmediatelyReadySession(fetchMock);
+    simulateImmediatelyOpenSocket(MockWebSocket);
+    const connection = Connection.connect(
+      { apiKey: testApiKey, clientChain: "client=studio-frontend" },
+      testHarness,
+    );
+    vi.runAllTimersAsync();
+    await connection;
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          [CLIENT_HEADER_NAME]: `client=studio-frontend, ${buildHop()}`,
+        }),
+      }),
+    );
   });
 
   test("rejects if API key is missing", async () => {

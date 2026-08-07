@@ -6,7 +6,7 @@ import { platform } from "@platform";
 import logger, { sessionContextLogger } from "./logger";
 import { getEnv } from "./platform/env";
 import { OpenSocket, SocketApiSubset } from "./platform/types";
-import { PACKAGE_NAME, PACKAGE_VERSION } from "./version";
+import { CLIENT_HEADER_NAME, clientHeaderValue } from "./clientHeader";
 import { DataCompression } from "./constants";
 import {
   CancelExecutionEvent,
@@ -134,7 +134,7 @@ export class Connection {
       // Identifies the SDK on both platforms; a custom header is used because
       // browsers drop a JS-set User-Agent. The richer User-Agent below is
       // added only where the runtime allows it (Node).
-      "X-Wherobots-Client": `${PACKAGE_NAME}/${PACKAGE_VERSION}`,
+      [CLIENT_HEADER_NAME]: clientHeaderValue(this.options.clientChain),
     };
     if (this.options.token) {
       headers["Authorization"] = `Bearer ${this.options.token}`;

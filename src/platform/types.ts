@@ -62,6 +62,12 @@ export interface Platform {
   // The User-Agent the REST client should send, or undefined when the runtime
   // doesn't allow overriding it (browsers drop a JS-set User-Agent).
   userAgent(): string | undefined;
+  // The `plat=` value for this runtime's X-Wherobots-Client hop. Node reports
+  // its OS; the browser reports the runtime, since it has no OS it could name
+  // honestly. This lives on the Platform interface rather than behind a
+  // `typeof process` guard so that `process.platform` never reaches the
+  // browser bundle at all (asserted by bundle.smoke.test.ts).
+  clientPlatform: string;
   // The default result compression to request when the consumer hasn't chosen
   // one: brotli in Node, gzip in the browser.
   defaultCompression: DataCompression;

@@ -89,6 +89,7 @@ export const platform: Platform = {
   // Browsers drop a JS-set User-Agent; the SDK identifies itself via the
   // X-Wherobots-Client header instead (set by the connection on both platforms).
   userAgent: () => undefined,
+  clientPlatform: "browser",
   defaultCompression: DataCompression.GZIP,
   createLogger: (options) => consoleLogger(options),
 };
