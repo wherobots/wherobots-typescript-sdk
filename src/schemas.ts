@@ -19,9 +19,10 @@ const apiKeySchema = z.string().min(1).max(255);
 const ConnectionOptionsSchema = z.object({
   apiKey: apiKeySchema.optional(),
   // A bearer token (e.g. a WorkOS access token) used instead of an API key.
-  // Exactly one of `token` / `apiKey` must be provided. In the browser, prefer
-  // `token`: it authenticates the REST calls, while the session WebSocket relies
-  // on the ambient `wherobotsToken` cookie.
+  // Exactly one of `token` / `apiKey` must be provided. `apiKey` is Node-only:
+  // the browser WebSocket has no header channel and the `?token=` query channel
+  // was removed server-side, so a browser connection with an `apiKey` throws at
+  // connect time.
   token: z.string().min(1).max(8192).optional(),
   // Override the API origin. Defaults to the WHEROBOTS_API_URL env var (Node)
   // or https://api.cloud.wherobots.com. Must be set explicitly in the browser

@@ -1,29 +1,18 @@
 import { DataCompression } from "../constants";
-import {
-  AuthCredentials,
-  Logger,
-  LoggerOptions,
-  Platform,
-  SocketApiSubset,
-} from "./types";
+import { Logger, LoggerOptions, Platform, SocketApiSubset } from "./types";
 
 // In the browser the native WebSocket cannot set request headers, so auth on
-// the upgrade uses one of the two header-free channels the edge (goproxy)
-// accepts:
-//   - a bearer/session token via the ambient `wherobotsToken` cookie (sent
-//     automatically because the page origin and the session host share the
-//     registrable domain), or
-//   - an API key via the `?token=` query param, which goproxy validates as an
-//     X-API-Key. This requires the EnableTokenQueryParamGoproxy flag, and the
-//     key is visible in the URL (and thus proxy/access logs), so prefer a
-//     short-lived token + cookie when possible.
-const openSocket = (url: string, auth: AuthCredentials): SocketApiSubset => {
-  let socketUrl = url;
-  if (auth.apiKey) {
-    const separator = socketUrl.includes("?") ? "&" : "?";
-    socketUrl += `${separator}token=${encodeURIComponent(auth.apiKey)}`;
-  }
-  const ws = new WebSocket(socketUrl);
+// the upgrade rides the ambient `wherobotsToken` cookie, sent automatically
+// because the page origin and the session host share the registrable domain.
+// The cookie is the only browser channel: the other former header-free
+// alternative — an API key in the `?token=` query param — was removed
+// server-side (goproxy dropped the channel), and a key in a URL leaks into
+// history/Referer/proxy logs anyway. A browser connection built with an
+// `apiKey` is rejected at connect time (Connection's constructor) before any
+// socket exists; `auth` is accepted only for signature parity with the Node
+// platform.
+const openSocket = (url: string): SocketApiSubset => {
+  const ws = new WebSocket(url);
   ws.binaryType = "arraybuffer";
   return ws;
 };
