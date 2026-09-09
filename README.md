@@ -207,6 +207,26 @@ The `Connection.connect()` function can take the following additional options:
 > and customers; other regions are currently reserved to Professional
 > Edition customers.
 
+### Handling query errors
+
+If the server rejects a query, `execute()` throws an `Error` whose `message`
+contains the server's explanation. Catch it to report the SQL error to your user:
+
+```typescript
+try {
+  const results = await conn.execute("SELECT * FROM missing_table");
+  console.log(results.toArray());
+} catch (error) {
+  if (error instanceof Error) {
+    console.error(error.message);
+  } else {
+    throw error;
+  }
+} finally {
+  conn.close();
+}
+```
+
 ### Additional parameters to `execute()`
 
 The `Connection#execute` method can take an optional second argument, `options`:

@@ -499,7 +499,7 @@ describe("Connection#execute, when executing a single SQL statement", async () =
     ]);
   });
 
-  test("rejects if the execution returns an error", async () => {
+  test("rejects with the server message if the execution returns an error", async () => {
     simulateImmediatelyReadySession(fetchMock);
     simulateSocketWithSingleExecutionError(MockWebSocket);
     const connection = createConnectionUnderTest();
@@ -508,7 +508,7 @@ describe("Connection#execute, when executing a single SQL statement", async () =
       "SHOW SCHEMAS IN wherobots_open_data",
     );
     vi.runAllTimersAsync();
-    await expect(result).rejects.toBeInstanceOf(Error);
+    await expect(result).rejects.toEqual(new Error("Error executing SQL"));
   });
 
   test("rejects if there is a connection error", async () => {
@@ -665,7 +665,7 @@ describe("Connection#execute, when executing multiple SQL statements", async () 
       .execute("SHOW tables IN wherobots_open_data.overture")
       .then((table) => table.toArray().map((row) => row.toJSON()));
     vi.runAllTimersAsync();
-    await expect(resultOne).rejects.toBeInstanceOf(Error);
+    await expect(resultOne).rejects.toEqual(new Error("Error executing SQL"));
     await expect(resultTwo).resolves.toEqual(showTablesExpectedPayload);
     expect(wasSocketClosed(MockWebSocket)).toEqual(false);
   });
