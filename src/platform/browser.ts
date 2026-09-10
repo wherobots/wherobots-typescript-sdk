@@ -2,8 +2,9 @@ import { DataCompression } from "../constants";
 import { Logger, LoggerOptions, Platform, SocketApiSubset } from "./types";
 
 // In the browser the native WebSocket cannot set request headers, so auth on
-// the upgrade rides the ambient `wherobotsToken` cookie, sent automatically
-// because the page origin and the session host share the registrable domain.
+// the upgrade uses an existing `wherobotsToken` cookie when its scope and
+// browser cookie policies permit it. The hosting app establishes the cookie;
+// passing a token to the SDK only authenticates REST calls.
 // The cookie is the only browser channel: the other former header-free
 // alternative — an API key in the `?token=` query param — was removed
 // server-side (goproxy dropped the channel), and a key in a URL leaks into

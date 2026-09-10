@@ -115,13 +115,12 @@ automatically:
 
 - **WebSocket authentication.** Browsers cannot set headers on a WebSocket, so
   the session socket authenticates via the `wherobotsToken` cookie, which the
-  browser sends automatically when the page and the Wherobots session host
-  share the `wherobots.com` registrable domain. Pass a `token` (bearer or
-  session token): it authenticates the REST calls, while the session cookie it
-  establishes authenticates the socket upgrade. The former `?token=` query
-  param was removed server-side (and an API key in a URL leaks into history,
-  Referer, and proxy logs anyway), so passing `apiKey` in the browser now
-  throws at connect time.
+  browser sends when its domain, path, and browser cookie policies permit it
+  for the session host. The hosting app must establish this cookie separately
+  through its login flow. Passing `token` authenticates REST calls; the SDK
+  does not create the cookie. The SDK no longer sends API keys through the
+  `?token=` query parameter, so passing `apiKey` in the browser throws at
+  connect time.
 
   REST calls send `Authorization: Bearer <token>` in all environments;
   `X-API-Key` exists only on the Node `apiKey` path.
