@@ -44,8 +44,9 @@ export interface CapturedAuth {
   authorization?: string | undefined;
   apiKey?: string | undefined;
   cookie?: string | undefined;
-  // The `?token=` query param on the WS upgrade (goproxy validates it as an
-  // X-API-Key); only captured for the WebSocket.
+  // The `?token=` query param on the WS upgrade. The SDK no longer sends this
+  // channel (it was removed server-side); captured so tests can assert the
+  // socket URL stays credential-free.
   queryToken?: string | undefined;
 }
 

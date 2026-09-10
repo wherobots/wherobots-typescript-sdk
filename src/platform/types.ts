@@ -67,7 +67,7 @@ export interface Platform {
   // honestly. This lives on the Platform interface rather than behind a
   // `typeof process` guard so that `process.platform` never reaches the
   // browser bundle at all (asserted by bundle.smoke.test.ts).
-  clientPlatform: string;
+  clientPlatform: NodeJS.Platform | "browser";
   // The default result compression to request when the consumer hasn't chosen
   // one: brotli in Node, gzip in the browser.
   defaultCompression: DataCompression;

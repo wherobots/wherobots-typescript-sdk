@@ -89,10 +89,12 @@ test("browser end-to-end: native WebSocket + cookie auth + gzip decode", async (
   // (gzip) + cbor-x + Arrow produced the expected rows.
   expect(rows).toEqual(EXPECTED_SHOW_SCHEMAS_ROWS);
 
-  // (b) The WS upgrade authenticated via the cookie, with no header.
+  // (b) The WS upgrade authenticated via the cookie, with no header and no
+  // credential in the URL.
   expect(server.wsAuth.cookie).toContain("wherobotsToken=cookie-bearer-token");
   expect(server.wsAuth.authorization).toBeUndefined();
   expect(server.wsAuth.apiKey).toBeUndefined();
+  expect(server.wsAuth.queryToken).toBeUndefined();
   // REST still carried the bearer token.
   expect(server.restAuth.authorization).toBe("Bearer rest-bearer-token");
 
@@ -101,30 +103,31 @@ test("browser end-to-end: native WebSocket + cookie auth + gzip decode", async (
   expect(server.retrieveRequests[0]?.compression).toBe(DataCompression.GZIP);
 });
 
-test("browser end-to-end: API key via ?token= query param on the WS", async ({
+test("browser end-to-end: apiKey is rejected at connect time", async ({
   page,
 }) => {
-  // No cookie this time. An API key authenticates the browser WS by riding in
-  // the ?token= query param (which goproxy validates as an X-API-Key), since
-  // the native WebSocket can't send the X-API-Key header.
+  // The `?token=` query-param channel was removed server-side (goproxy), and
+  // a key in a URL leaks into history/Referer/proxy logs anyway, so an apiKey
+  // can no longer authenticate a browser WebSocket. The connection must fail
+  // fast with a clear error, before any request is sent.
   await page.goto(server.apiUrl);
   await page.waitForFunction(() => typeof window.runQuery === "function");
 
-  const rows = await page.evaluate(
-    ({ apiUrl }) =>
-      window.runQuery({
-        apiUrl,
-        apiKey: "browser-api-key",
-        statement: "SHOW SCHEMAS IN wherobots_open_data",
-      }),
-    { apiUrl: server.apiUrl },
+  await expect(
+    page.evaluate(
+      ({ apiUrl }) =>
+        window.runQuery({
+          apiUrl,
+          apiKey: "browser-api-key",
+          statement: "SHOW SCHEMAS IN wherobots_open_data",
+        }),
+      { apiUrl: server.apiUrl },
+    ),
+  ).rejects.toThrow(
+    "apiKey auth is not supported for browser WebSocket connections; pass `token` for REST calls and have the hosting app establish a `wherobotsToken` cookie for the session host separately",
   );
 
-  expect(rows).toEqual(EXPECTED_SHOW_SCHEMAS_ROWS);
-  // The API key reached the WS upgrade as the ?token= query param (no header).
-  expect(server.wsAuth.queryToken).toBe("browser-api-key");
-  expect(server.wsAuth.authorization).toBeUndefined();
-  expect(server.wsAuth.apiKey).toBeUndefined();
-  // REST authenticated with the X-API-Key header.
-  expect(server.restAuth.apiKey).toBe("browser-api-key");
+  // Nothing reached the server: no REST session call, no WS upgrade.
+  expect(server.restAuth.apiKey).toBeUndefined();
+  expect(server.wsAuth.queryToken).toBeUndefined();
 });

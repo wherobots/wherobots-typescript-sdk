@@ -123,6 +123,16 @@ export class Connection {
     }
     this.options = ConnectionOptionsSchemaNormalized.parse(merged);
 
+    // The browser WebSocket has no header channel, and the `?token=` query
+    // channel was removed server-side (goproxy), so an `apiKey` can never
+    // authenticate a browser session socket. Fail fast rather than creating a
+    // session the socket could never join.
+    if (this.options.apiKey && platform.clientPlatform === "browser") {
+      throw new Error(
+        "apiKey auth is not supported for browser WebSocket connections; pass `token` for REST calls and have the hosting app establish a `wherobotsToken` cookie for the session host separately",
+      );
+    }
+
     this.apiUrl =
       this.options.apiUrl || getEnv("WHEROBOTS_API_URL") || DEFAULT_API_URL;
     this.compression =

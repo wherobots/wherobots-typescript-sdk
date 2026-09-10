@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- **Breaking (browser):** the session WebSocket no longer authenticates an API
+  key via the `?token=` query param — the server-side channel is being removed
+  (goproxy), and a key in the URL leaks into history/Referer/proxy logs. The
+  browser socket now authenticates solely via the ambient `wherobotsToken`
+  cookie, which the hosting app must establish separately. Passing `token`
+  authenticates REST calls and does not create that cookie. Passing `apiKey`
+  in the browser throws at connect time. Node
+  behavior is unchanged (API keys still use the `X-API-Key` header).
+
 ## 0.11.0
 
 ### Added
