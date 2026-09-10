@@ -123,7 +123,9 @@ test("browser end-to-end: apiKey is rejected at connect time", async ({
         }),
       { apiUrl: server.apiUrl },
     ),
-  ).rejects.toThrow("apiKey auth is not supported");
+  ).rejects.toThrow(
+    "apiKey auth is not supported for browser WebSocket connections; pass `token` for REST calls and have the hosting app establish a `wherobotsToken` cookie for the session host separately",
+  );
 
   // Nothing reached the server: no REST session call, no WS upgrade.
   expect(server.restAuth.apiKey).toBeUndefined();

@@ -129,7 +129,7 @@ export class Connection {
     // session the socket could never join.
     if (this.options.apiKey && platform.clientPlatform === "browser") {
       throw new Error(
-        "apiKey auth is not supported for browser WebSocket connections; use session-cookie auth (pass `token` instead)",
+        "apiKey auth is not supported for browser WebSocket connections; pass `token` for REST calls and have the hosting app establish a `wherobotsToken` cookie for the session host separately",
       );
     }
 
