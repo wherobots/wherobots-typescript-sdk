@@ -152,6 +152,38 @@ describe("paths", () => {
     expect(calls[0]!.url).toBe(`${BASE}/directories/a/b/`);
   });
 
+  test.each(["../sql/session/x", "a/./b.txt", "a/..", ".."])(
+    "refuses a dot segment before any request: %s",
+    async (p) => {
+      const { fetch: f, calls } = mockFetch();
+      const d = client(f).myFiles;
+      await expect(d.deleteFile(p)).rejects.toBeInstanceOf(FilesError);
+      await expect(d.download(p)).rejects.toBeInstanceOf(FilesError);
+      await expect(d.rename(p, "n")).rejects.toBeInstanceOf(FilesError);
+      await expect(d.listAll(p)).rejects.toBeInstanceOf(FilesError);
+      expect(calls).toHaveLength(0);
+    },
+  );
+
+  test("keeps dots that are part of a name", async () => {
+    const { fetch: f, calls } = mockFetch(
+      on("DELETE", /\/files\//, () => new Response(null, { status: 204 })),
+    );
+    await client(f).myFiles.deleteFile("a/..b/.hidden");
+    expect(calls[0]!.url).toBe(`${BASE}/files/a/..b/.hidden`);
+  });
+
+  test.each(["", "/", "//"])(
+    "deleteDirectory refuses the drive root: %j",
+    async (p) => {
+      const { fetch: f, calls } = mockFetch();
+      await expect(client(f).myFiles.deleteDirectory(p)).rejects.toBeInstanceOf(
+        FilesError,
+      );
+      expect(calls).toHaveLength(0);
+    },
+  );
+
   test("rename sends new_name as a query parameter", async () => {
     const { fetch: f, calls } = mockFetch(
       on("POST", /file-rename/, () => json({})),
@@ -353,6 +385,28 @@ describe("errors", () => {
     expect(err.message).toContain('"my-files"');
     expect(err.message).toContain('"aws-us-west-2"');
   });
+
+  test.each([
+    [401, FilesAuthenticationError],
+    [403, FilesError],
+    [500, FilesError],
+  ])(
+    "a %i on the root probe is raised, not reported as a missing file",
+    async (status, type) => {
+      const { fetch: f } = mockFetch(
+        on("DELETE", /files/, () => errorBody(404, "nope")),
+        on("GET", `${BASE}/directories/?limit=1`, () =>
+          errorBody(status, "probe failed"),
+        ),
+      );
+      const err = await client(f)
+        .myFiles.deleteFile("gone.txt")
+        .catch((e) => e);
+      expect(err).toBeInstanceOf(type);
+      expect(err).not.toBeInstanceOf(FileNotFoundError);
+      expect(err).not.toBeInstanceOf(FilesNotEnabledError);
+    },
+  );
 
   test("404 on the root listing itself needs no second request", async () => {
     const { fetch: f, calls } = mockFetch(

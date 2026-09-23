@@ -34,9 +34,15 @@ type Route = "directories" | "files" | "file-upload-url" | "file-rename";
 
 const trimSlashes = (path: string) => path.replace(/^\/+|\/+$/g, "");
 
-// Percent-encode each segment on its own so "/" stays a separator.
-export const encodePath = (path: string): string =>
-  path.split("/").map(encodeURIComponent).join("/");
+// Percent-encode each segment on its own so "/" stays a separator. "." and
+// ".." are refused: fetch would resolve them into a different API route.
+export const encodePath = (path: string): string => {
+  const segments = path.split("/");
+  if (segments.some((s) => s === "." || s === "..")) {
+    throw new FilesError(`A Files path may not contain "." or "..": "${path}"`);
+  }
+  return segments.map(encodeURIComponent).join("/");
+};
 
 // A directory path as the API spells it: no leading slash, one trailing
 // slash, and the empty string for the drive root.
@@ -172,6 +178,9 @@ export class FileDrive {
   // Deletes a folder and everything in it.
   public async deleteDirectory(path: string): Promise<void> {
     const dir = directoryPath(path);
+    if (dir === "") {
+      throw new FilesError("Refusing to delete the drive root");
+    }
     const res = await this.request("DELETE", "directories", dir);
     if (!res.ok) {
       await this.fail(res, dir);
@@ -243,9 +252,17 @@ export class FileDrive {
     );
   }
 
+  // Only a successful root listing proves the drive is on; any other failure
+  // (auth, outage) is raised as itself rather than hidden behind a 404.
   private async driveReachable(): Promise<boolean> {
     const params = new URLSearchParams({ limit: "1" });
     const res = await this.request("GET", "directories", "", params);
-    return res.status !== 404;
+    if (res.ok) {
+      return true;
+    }
+    if (res.status === 404) {
+      return false;
+    }
+    return this.fail(res, "/");
   }
 }
