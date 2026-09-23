@@ -41,6 +41,8 @@ describe("browser bundle is free of Node-only references", () => {
     "pino-pretty",
     "read-pkg-up",
     "zlib",
+    '"fs"',
+    '"fs/promises"',
     "process.platform",
     "process.version",
     "__dirname",

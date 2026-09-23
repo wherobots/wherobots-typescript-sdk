@@ -4,9 +4,8 @@ import { Table, TypeMap } from "apache-arrow";
 import z from "zod";
 import { platform } from "@platform";
 import logger, { sessionContextLogger } from "./logger";
-import { getEnv } from "./platform/env";
 import { OpenSocket, SocketApiSubset } from "./platform/types";
-import { CLIENT_HEADER_NAME, clientHeaderValue } from "./clientHeader";
+import { buildRestHeaders, resolveApiUrl, withEnvApiKey } from "./rest";
 import { DataCompression } from "./constants";
 import {
   CancelExecutionEvent,
@@ -40,7 +39,6 @@ type ConnectionTestHarness = {
   protocolVersion?: string | undefined;
 };
 
-const DEFAULT_API_URL = "https://api.cloud.wherobots.com";
 const PROTOCOL_VERSION = "1.0.0";
 const API_REQUEST_TIMEOUT = 10e3;
 
@@ -114,14 +112,9 @@ export class Connection {
     // Apply the WHEROBOTS_API_KEY env fallback (Node only) only when the caller
     // supplied neither an explicit apiKey nor a token, so passing a token never
     // collides with an ambient API key.
-    const merged: ConnectionOptions = { ...options };
-    if (!merged.apiKey && !merged.token) {
-      const envApiKey = getEnv("WHEROBOTS_API_KEY");
-      if (envApiKey) {
-        merged.apiKey = envApiKey;
-      }
-    }
-    this.options = ConnectionOptionsSchemaNormalized.parse(merged);
+    this.options = ConnectionOptionsSchemaNormalized.parse(
+      withEnvApiKey(options),
+    );
 
     // The browser WebSocket has no header channel, and the `?token=` query
     // channel was removed server-side (goproxy), so an `apiKey` can never
@@ -133,30 +126,12 @@ export class Connection {
       );
     }
 
-    this.apiUrl =
-      this.options.apiUrl || getEnv("WHEROBOTS_API_URL") || DEFAULT_API_URL;
+    this.apiUrl = resolveApiUrl(this.options.apiUrl);
     this.compression =
       this.options.dataCompression ?? platform.defaultCompression;
 
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-      "Cache-Control": "no-store",
-      // Identifies the SDK on both platforms; a custom header is used because
-      // browsers drop a JS-set User-Agent. The richer User-Agent below is
-      // added only where the runtime allows it (Node).
-      [CLIENT_HEADER_NAME]: clientHeaderValue(this.options.clientChain),
-    };
-    if (this.options.token) {
-      headers["Authorization"] = `Bearer ${this.options.token}`;
-    } else if (this.options.apiKey) {
-      headers["X-API-Key"] = this.options.apiKey;
-    }
-    const userAgent = platform.userAgent();
-    if (userAgent) {
-      headers["User-Agent"] = userAgent;
-    }
     this.fetchOptions = {
-      headers,
+      headers: buildRestHeaders(this.options),
       signal: this.sessionAbortController.signal,
       // the types we're using don't recognize the `cache` option
       // even though it is a valid option for the fetch API

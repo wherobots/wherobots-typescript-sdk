@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Added
+
+- Files: work with your personal Wherobots file area (the Files page in
+  Studio) from code. `new Files(options).myFiles` (or
+  `files.drive(Drive.MY_FILES, { region })`) can list a folder, create a
+  folder (level by level), upload, download, rename and delete. Node streams
+  downloads to disk and uploads from a local path; browsers use Blobs. Errors
+  distinguish `FilesNotEnabledError`, `FilesAuthenticationError` and
+  `FileNotFoundError`.
+
 ### Changed
 
 - **Breaking (browser):** the session WebSocket no longer authenticates an API

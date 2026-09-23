@@ -1,5 +1,11 @@
 import { DataCompression } from "../constants";
-import { Logger, LoggerOptions, Platform, SocketApiSubset } from "./types";
+import {
+  DownloadResponse,
+  Logger,
+  LoggerOptions,
+  Platform,
+  SocketApiSubset,
+} from "./types";
 
 // In the browser the native WebSocket cannot set request headers, so auth on
 // the upgrade uses an existing `wherobotsToken` cookie when its scope and
@@ -73,7 +79,30 @@ const consoleLogger = (
   };
 };
 
+// Only the bearer token goes on the API call, and the browser follows the
+// redirect itself. Fetch drops Authorization on a cross-origin redirect but
+// keeps custom headers, which is why X-Wherobots-Client is left off here.
+const fetchDownload = async (
+  fetchImpl: typeof fetch,
+  url: string,
+  headers: Record<string, string>,
+): Promise<DownloadResponse> => {
+  const auth = new Headers(headers).get("Authorization");
+  const response = await fetchImpl(url, {
+    headers: auth ? { Authorization: auth } : {},
+    redirect: "follow",
+    cache: "no-store",
+  });
+  return { response, fromStorage: response.redirected };
+};
+
+const LOCAL_PATH_MESSAGE =
+  "Local file paths are not available in the browser; pass a Blob (upload) or use download() to get a Blob";
+
 export const platform: Platform = {
+  fetchDownload,
+  saveToFile: () => Promise.reject(new Error(LOCAL_PATH_MESSAGE)),
+  openLocalFile: () => Promise.reject(new Error(LOCAL_PATH_MESSAGE)),
   openSocket,
   decompress,
   // Browsers drop a JS-set User-Agent; the SDK identifies itself via the

@@ -189,3 +189,67 @@ export const ErrorEventSchema = EventWithExecutionIdSchema.extend({
 });
 
 export type ErrorEvent = z.infer<typeof ErrorEventSchema>;
+
+//////////////////////////////////////////////////////////////////////////
+// Schema-definitions for Files (the personal file area)
+
+const FilesOptionsSchema = ConnectionOptionsSchema.pick({
+  apiKey: true,
+  token: true,
+  apiUrl: true,
+  clientChain: true,
+}).extend({
+  // The region whose drive is used when `files.drive()` is not given one.
+  // Files has no organization default to fall back on, so a drive needs a
+  // region from here or from the `drive()` call.
+  region: z.string().min(1).optional(),
+});
+
+export type FilesOptions = z.infer<typeof FilesOptionsSchema>;
+
+export const FilesOptionsSchemaNormalized = FilesOptionsSchema.superRefine(
+  (options, ctx) => {
+    if (Boolean(options.token) === Boolean(options.apiKey)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Exactly one of `token` or `apiKey` is required",
+      });
+    }
+  },
+);
+
+export const FileEntrySchema = z.object({
+  name: z.string(),
+  path: z.string(),
+  type: z.enum(["FILE", "FOLDER"]),
+  size: z.number().default(0),
+  lastModified: z.string().nullable().default(null),
+});
+
+export type FileEntry = z.infer<typeof FileEntrySchema>;
+
+// `next_page` is snake_case on the wire while FileEntry is camelCase.
+export const DirectoryListingSchema = z.object({
+  items: z.array(FileEntrySchema),
+  next_page: z.string().nullable().optional(),
+});
+
+export const UploadUrlResponseSchema = z.object({
+  uploadUrl: z.string().url(),
+});
+
+// The API's ErrorBody (`errors`), or FastAPI's default (`detail`).
+export const ApiErrorBodySchema = z.object({
+  errors: z
+    .array(
+      z
+        .object({
+          detail: z.string().optional(),
+          message: z.string().optional(),
+          title: z.string().optional(),
+        })
+        .passthrough(),
+    )
+    .optional(),
+  detail: z.unknown().optional(),
+});

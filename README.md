@@ -232,3 +232,67 @@ try {
 The `Connection#execute` method can take an optional second argument, `options`:
 
 - `options.signal`: an `AbortSignal` which can be used to cancel the execution (optional)
+
+## Files
+
+`Files` works with your personal Wherobots file area — the same area as the
+**Files** page in Studio. It opens no SQL session; it only needs credentials.
+
+```ts
+import { Files, Drive, Region } from "wherobots-sql-driver";
+
+const files = new Files({
+  apiKey: process.env.WHEROBOTS_API_KEY, // or `token`; exactly one
+  region: Region.AWS_US_WEST_2,
+});
+
+const drive = files.myFiles; // same as files.drive(Drive.MY_FILES)
+```
+
+### Drives and region
+
+Files are reached through a **drive**. Today there is one kind, `Drive.MY_FILES`:
+your personal area, one per region. **A region is required**: pass it to
+`new Files()` or per drive with `files.drive(Drive.MY_FILES, { region })`.
+Unlike `connect()`, Files cannot fall back to your organization's default
+region, so a drive with no region throws. `await files.drives()` lists the kinds
+of drive available.
+
+### Operations
+
+```ts
+for await (const entry of drive.list("data")) {
+  console.log(entry.type, entry.path, entry.size); // type is "FILE" | "FOLDER"
+}
+const all = await drive.listAll("data");
+
+await drive.makeDirectory("data/2024/raw"); // creates data/, data/2024/, then raw/
+await drive.upload("data/points.csv", "./points.csv"); // Node: local path
+await drive.upload("data/points.csv", blobOrBytes); // Blob, ArrayBuffer, Uint8Array
+const blob = await drive.download("data/points.csv");
+await drive.downloadTo("data/points.csv", "./points.csv"); // Node only
+await drive.rename("data/points.csv", "points-v2.csv"); // a new name, not a path
+await drive.deleteFile("data/points-v2.csv");
+await drive.deleteDirectory("data/2024"); // removes everything inside it
+```
+
+Paths are relative to the drive root. File bytes move through short-lived
+signed links; your API key or token is never sent to the storage service
+behind them. Only single files are transferred — there is no recursive copy.
+
+### Node and browser
+
+In Node, `upload` accepts a local file path and `downloadTo` streams straight
+to disk. In the browser, pass a `Blob` (for example from an
+`<input type="file">`) to `upload` and use `download` to get a `Blob`; local
+paths are refused. As with `connect()`, the browser accepts a `token` only.
+
+### Errors
+
+Every error is a `FilesError` (with the HTTP `status` when there was one).
+Three subclasses tell apart what you fix differently:
+
+- `FilesNotEnabledError` — Files is not turned on for that drive and region
+  (`error.drive`, `error.region`).
+- `FilesAuthenticationError` — the API key or token was not accepted.
+- `FileNotFoundError` — the file or folder does not exist (`error.path`).

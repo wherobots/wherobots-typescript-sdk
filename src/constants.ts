@@ -71,3 +71,8 @@ export enum SessionStatus {
   DESTROY_FAILED = "DESTROY_FAILED",
   DESTROYED = "DESTROYED",
 }
+
+// A Files drive. Today there is one per region: the caller's personal area.
+export enum Drive {
+  MY_FILES = "my-files",
+}

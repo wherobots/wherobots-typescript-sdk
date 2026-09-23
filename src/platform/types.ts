@@ -72,4 +72,22 @@ export interface Platform {
   // one: brotli in Node, gzip in the browser.
   defaultCompression: DataCompression;
   createLogger(options: LoggerOptions): Logger;
+  // Files download: call the API download route and reach the signed storage
+  // link it redirects to, without the Wherobots credentials ever reaching it.
+  fetchDownload(
+    fetchImpl: typeof fetch,
+    url: string,
+    headers: Record<string, string>,
+  ): Promise<DownloadResponse>;
+  // Write a download body to a local file (Node only).
+  saveToFile(body: ReadableStream<Uint8Array>, path: string): Promise<void>;
+  // Open a local file as an upload body (Node only).
+  openLocalFile(path: string): Promise<Blob>;
+}
+
+// `fromStorage` is true once the response came from the signed storage link,
+// so an error status is the storage service's, not the Wherobots API's.
+export interface DownloadResponse {
+  response: Response;
+  fromStorage: boolean;
 }
