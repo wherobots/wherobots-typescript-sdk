@@ -1,6 +1,6 @@
 # Wherobots TypeScript SDK
 
-<!-- Note to authors: This content is duplicated from https://github.com/wherobots/documents/blob/source/docs/develop/spatial-sql-api.md#wherobots-sql-driver-typescript-sdk. When making updates here, please mirror them to the other location. -->
+<!-- Note to authors: This content is duplicated from https://github.com/wherobots/docs/blob/main/develop/spatial-sql-api.mdx#wherobots-sql-driver-typescript-sdk. When making updates here, please mirror them to the other location. -->
 
 This is the TypeScript SDK for interacting with WherobotsDB. This package implements a
 client that programmatically connects to a WherobotsDB runtime and executes Spatial SQL
@@ -42,7 +42,7 @@ import { Connection, Runtime } from "wherobots-sql-driver";
     // replace "YOUR-WHEROBOTS-API-KEY" with the key created above
     // or alternatively the key can be set with the `WHEROBOTS_API_KEY` environment variable
     apiKey: "YOUR-WHEROBOTS-API-KEY",
-    runtime: Runtime.SEDONA,
+    runtime: Runtime.TINY,
   });
   const results = await conn.execute("SHOW SCHEMAS IN wherobots_open_data");
   console.log(JSON.stringify(results.toArray(), null, 2));
@@ -157,7 +157,7 @@ The `Connection.connect()` function can take the following additional options:
   impacts from shared resources. You might need to adjust cluster size if slowdowns
   occur, which could affect overall cost.
 
-- `force_new`: passing `force_new: true` forces Wherobots Cloud to create
+- `forceNew`: passing `forceNew: true` forces Wherobots Cloud to create
   and start a new SQL Session runtime for this connection instead of
   attempting to reuse an existing, available one. Note that this can
   severely impact the delay in obtaining a connection to your runtime.
