@@ -64,8 +64,12 @@ const simulateWebSocketEvent = (
   const listeners = socketInstance.addEventListener.mock.calls.filter(
     (call) => call[0] === type,
   );
-  listeners.forEach((call) => {
-    call[1](e);
+  listeners.forEach(([, listener]) => {
+    if (typeof listener === "function") {
+      listener(e);
+    } else {
+      listener.handleEvent(e);
+    }
   });
 };
 
