@@ -400,6 +400,7 @@ describe("Connection.connect, when establishing SQL session", () => {
     simulateSessionServiceError(fetchMock, { numInitialSuccesses: 2 });
     simulateImmediatelyOpenSocket(MockWebSocket);
     const connection = createConnectionUnderTest();
+    vi.runAllTimersAsync();
     await expect(connection).rejects.toBeInstanceOf(Error);
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
@@ -408,6 +409,7 @@ describe("Connection.connect, when establishing SQL session", () => {
     simulateSessionPollInvalidResponse(fetchMock, { numInitialSuccesses: 2 });
     simulateImmediatelyOpenSocket(MockWebSocket);
     const connection = createConnectionUnderTest();
+    vi.runAllTimersAsync();
     await expect(connection).rejects.toBeInstanceOf(Error);
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
