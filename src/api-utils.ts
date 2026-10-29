@@ -1,4 +1,4 @@
-import z, { ZodRawShape } from "zod";
+import { z, type ZodRawShape } from "zod";
 import { SessionReponse } from "./schemas";
 import { ResultsFormat, SessionStatus } from "./constants";
 import logger from "./logger";

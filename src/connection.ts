@@ -1,7 +1,7 @@
 import * as uuid from "uuid";
 import { decode as decodeCbor } from "cbor-x";
 import { Table, TypeMap } from "apache-arrow";
-import z from "zod";
+import { z } from "zod";
 import { platform } from "@platform";
 import logger, { sessionContextLogger } from "./logger";
 import { getEnv } from "./platform/env";

@@ -12,6 +12,17 @@
   authenticates REST calls and does not create that cookie. Passing `apiKey`
   in the browser throws at connect time. Node
   behavior is unchanged (API keys still use the `X-API-Key` header).
+- **Breaking (validation errors):** the runtime dependency `zod` moves from 3.x
+  to 4.x to pick up a fix for a memory-exhaustion advisory that has no 3.x
+  patch. The `ConnectionOptions` type is unchanged, but invalid options now
+  throw a zod 4 `ZodError`. Read `.issues` (`.errors` is gone). Issue codes
+  and messages differ: an invalid `apiUrl` reports `invalid_format` /
+  `Invalid URL`, an unknown enum value reports `invalid_value` instead of
+  `invalid_enum_value`, and type mismatches read `Invalid input: expected …`.
+  An `instanceof ZodError` check against a consumer's own zod 3 install no
+  longer matches; check `err.name === "ZodError"` or `err.issues` instead.
+  Consumers type-checking the SDK's declarations without `skipLibCheck` need
+  TypeScript 5.4 or newer (zod 4 documents 5.5+ as its supported floor).
 
 ## 0.11.0
 
