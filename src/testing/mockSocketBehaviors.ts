@@ -2,7 +2,7 @@ import { encode } from "cbor-x";
 import { readFileSync } from "fs";
 import { resolve } from "path";
 import WebSocket from "ws";
-import { vi, MockedFunction, expect } from "vitest";
+import { vi, Mock, MockedFunction, expect } from "vitest";
 import {
   ErrorEvent,
   EventWithExecutionIdSchema,
@@ -41,7 +41,12 @@ export const createMockWebSocket = () => {
   return mockWebSocket;
 };
 
-const mockWebSocketDefaultImplementation = () => ({
+const mockWebSocketDefaultImplementation = (): {
+  send: Mock;
+  close: Mock;
+  addEventListener: Mock;
+  removeEventListener: Mock;
+} => ({
   send: vi.fn(),
   close: vi.fn(),
   addEventListener: vi.fn(),
