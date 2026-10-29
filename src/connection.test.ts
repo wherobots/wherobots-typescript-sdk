@@ -7,7 +7,7 @@ import fetchMockBuilder, { FetchMock } from "vitest-fetch-mock";
 import WebSocket from "ws";
 import { Connection } from "./connection";
 import { CLIENT_HEADER_NAME, buildHop } from "./clientHeader";
-import { Runtime, SessionType } from "./constants";
+import { DataCompression, Runtime, SessionType } from "./constants";
 import {
   SESSION_LIFECYCLE_RESPONSES,
   simulateImmediatelyReadySession,
@@ -325,6 +325,54 @@ describe("Connection.connect, when passed connection options", () => {
     );
     vi.runAllTimersAsync();
     await expect(connection).rejects.toBeInstanceOf(Error);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  test("rejects if both apiKey and token are set", async () => {
+    const connection = Connection.connect(
+      { apiKey: testApiKey, token: "a-bearer-token" },
+      testHarness,
+    );
+    vi.runAllTimersAsync();
+    await expect(connection).rejects.toThrow(
+      "Exactly one of `token` or `apiKey` is required",
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  test("rejects if apiUrl is not a URL", async () => {
+    const connection = Connection.connect(
+      { apiKey: testApiKey, apiUrl: "not a url" },
+      testHarness,
+    );
+    vi.runAllTimersAsync();
+    await expect(connection).rejects.toMatchObject({
+      name: "ZodError",
+      issues: [
+        expect.objectContaining({ code: "invalid_format", path: ["apiUrl"] }),
+      ],
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  test("rejects if given an unknown enum value", async () => {
+    const connection = Connection.connect(
+      {
+        apiKey: testApiKey,
+        dataCompression: "zstd" as unknown as DataCompression,
+      },
+      testHarness,
+    );
+    vi.runAllTimersAsync();
+    await expect(connection).rejects.toMatchObject({
+      name: "ZodError",
+      issues: [
+        expect.objectContaining({
+          code: "invalid_value",
+          path: ["dataCompression"],
+        }),
+      ],
+    });
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });

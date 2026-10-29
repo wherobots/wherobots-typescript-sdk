@@ -1,4 +1,4 @@
-import z from "zod";
+import { z } from "zod";
 import { MAX_HEADER_BYTES } from "./clientHeader";
 import {
   DataCompression,
@@ -27,7 +27,7 @@ const ConnectionOptionsSchema = z.object({
   // Override the API origin. Defaults to the WHEROBOTS_API_URL env var (Node)
   // or https://api.cloud.wherobots.com. Must be set explicitly in the browser
   // only when targeting a non-default environment.
-  apiUrl: z.string().url().optional(),
+  apiUrl: z.url().optional(),
   // Accepts any non-empty string; `Runtime` enum values are passed through as-is.
   // When omitted, the org's default runtime is used.
   runtime: z
@@ -51,9 +51,9 @@ const ConnectionOptionsSchema = z.object({
   resultsFormat: z.literal(ResultsFormat.ARROW).optional(),
   // Result compression to request from the server. When omitted, the platform
   // default is used (brotli in Node, gzip in the browser).
-  dataCompression: z.nativeEnum(DataCompression).optional(),
-  geometryRepresentation: z.nativeEnum(GeometryRepresentation).optional(),
-  sessionType: z.nativeEnum(SessionType).optional(),
+  dataCompression: z.enum(DataCompression).optional(),
+  geometryRepresentation: z.enum(GeometryRepresentation).optional(),
+  sessionType: z.enum(SessionType).optional(),
   forceNew: z.boolean().optional(),
   shutdownAfterInactiveSeconds: z.number().int().positive().optional(),
   // An inbound `X-Wherobots-Client` chain to forward. Set this only when the
@@ -92,7 +92,7 @@ export const ConnectionOptionsSchemaNormalized = ConnectionOptionsSchema.extend(
 ).superRefine((options, ctx) => {
   if (Boolean(options.token) === Boolean(options.apiKey)) {
     ctx.addIssue({
-      code: z.ZodIssueCode.custom,
+      code: "custom",
       message: "Exactly one of `token` or `apiKey` is required",
     });
   }
@@ -106,14 +106,14 @@ export type ConnectionOptionsNormalized = z.infer<
 // Schema-definitions for creating the session via REST
 
 const AppMetaSchema = z.object({
-  url: z.string().url(),
+  url: z.url(),
 });
 
 export const SessionResponseSchema = z.object({
   id: z.string(),
-  status: z.nativeEnum(SessionStatus),
+  status: z.enum(SessionStatus),
   appMeta: AppMetaSchema.nullable().optional(),
-  traces: z.object({}).passthrough().nullable().optional(),
+  traces: z.looseObject({}).nullable().optional(),
   message: z.string().nullable().optional(),
 });
 
@@ -140,8 +140,8 @@ export type ExecuteSQLEvent = z.infer<typeof ExecuteSQLEventSchema>;
 export const RetrieveResultsEventSchema = z.object({
   kind: z.literal("retrieve_results"),
   execution_id: ExecutionIdSchema,
-  geometry: z.nativeEnum(GeometryRepresentation),
-  compression: z.nativeEnum(DataCompression),
+  geometry: z.enum(GeometryRepresentation),
+  compression: z.enum(DataCompression),
 });
 
 export type RetrieveResultsEvent = z.infer<typeof RetrieveResultsEventSchema>;
@@ -172,11 +172,11 @@ export const ExecutionResultEventSchema = EventWithExecutionIdSchema.extend({
     // z.instanceof) keeps the inferred type the permissive `Uint8Array` so a
     // Node Buffer (Uint8Array<ArrayBufferLike>) is accepted as well.
     result_bytes: z.custom<Uint8Array>((val) => val instanceof Uint8Array, {
-      message: "Expected binary result bytes",
+      error: "Expected binary result bytes",
     }),
-    compression: z.nativeEnum(DataCompression),
-    format: z.nativeEnum(ResultsFormat),
-    geometry: z.nativeEnum(GeometryRepresentation),
+    compression: z.enum(DataCompression),
+    format: z.enum(ResultsFormat),
+    geometry: z.enum(GeometryRepresentation),
     geo_columns: z.array(z.string()),
   }),
 });
